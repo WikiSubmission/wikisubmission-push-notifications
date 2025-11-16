@@ -46,7 +46,15 @@ export async function getFileExports<T>(
 
         try {
             const mod = await import(filePath);
-            const exported = mod?.default;
+            
+            // Handle both ESM and CommonJS default exports
+            // In CommonJS compiled from TS, default export might be on mod.default or mod.default.default
+            let exported = mod?.default;
+            
+            // If mod.default is an object with a default property, use that instead
+            if (exported && typeof exported === 'object' && 'default' in exported) {
+                exported = exported.default;
+            }
 
             if (typeof exported === 'function') {
                 const result = await exported();
