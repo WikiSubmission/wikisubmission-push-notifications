@@ -1,7 +1,6 @@
 import { Server } from "../server";
 
 export type EnvironmentVariables =
-  | "NODE_ENV"
   | "SUPABASE_URL"
   | "SUPABASE_SERVICE_ROLE_KEY"
   | "APNS_ENV"

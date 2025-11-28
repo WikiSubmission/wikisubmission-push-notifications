@@ -6,6 +6,8 @@ import z from 'zod';
 import { getSupabaseInternalClient } from './get-supabase-client';
 
 export class NotificationManagerIOS {
+    static shared = new NotificationManagerIOS();
+    
     private primaryEnv: 'production' | 'sandbox' = getEnv('APNS_ENV') === 'production' ? 'production' : 'sandbox';
     private token = this.createApnsJwt();
     private client: http2.ClientHttp2Session | null = null;

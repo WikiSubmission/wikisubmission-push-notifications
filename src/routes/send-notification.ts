@@ -26,16 +26,13 @@ export default function route(): RouteOptions {
                     });
                 }
 
-                const contentManager = new NotificationContentIOS;
-                const notificationManager = new NotificationManagerIOS();
-
                 let content: z.infer<typeof Notification>["content"] | null = null;
 
                 let onSuccess: () => Promise<void> = async () => { };
 
                 switch (inputs["type"]) {
                     case "random_verse":
-                        content = await contentManager.randomVerse();
+                        content = await NotificationContentIOS.shared.randomVerse();
                         onSuccess = async () => {
                             await getSupabaseInternalClient()
                                 .from('ws_notifications_ios')
@@ -46,7 +43,7 @@ export default function route(): RouteOptions {
                         }
                         break;
                     case "daily_verse":
-                        content = await contentManager.verseOfTheDay(inputs["device_token"], inputs["force"] === "true");
+                        content = await NotificationContentIOS.shared.verseOfTheDay(inputs["device_token"], inputs["force"] === "true");
                         onSuccess = async () => {
                             await getSupabaseInternalClient()
                                 .from('ws_notifications_ios')
@@ -58,7 +55,7 @@ export default function route(): RouteOptions {
                         }
                         break;
                     case "daily_chapter":
-                        content = await contentManager.chapterOfTheDay(inputs["device_token"], inputs["force"] === "true");
+                        content = await NotificationContentIOS.shared.chapterOfTheDay(inputs["device_token"], inputs["force"] === "true");
                         onSuccess = async () => {
                             await getSupabaseInternalClient()
                                 .from('ws_notifications_ios')
@@ -70,7 +67,7 @@ export default function route(): RouteOptions {
                         }
                         break;
                     case "prayer_times":
-                        content = await contentManager.prayerTimes(inputs["device_token"], inputs["force"] === "true");
+                        content = await NotificationContentIOS.shared.prayerTimes(inputs["device_token"], inputs["force"] === "true");
                         onSuccess = async () => {
                             await getSupabaseInternalClient()
                                 .from('ws_notifications_ios')
@@ -95,7 +92,7 @@ export default function route(): RouteOptions {
                     });
                 }
 
-                await notificationManager.send({
+                await NotificationManagerIOS.shared.send({
                     token: inputs["device_token"],
                     content,
                 });
