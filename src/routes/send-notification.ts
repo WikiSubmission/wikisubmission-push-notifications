@@ -95,6 +95,9 @@ export default function route(): RouteOptions {
                 await NotificationManagerIOS.shared.send({
                     token: inputs["device_token"],
                     content,
+                    options: { 
+                        critical: inputs["type"] === "prayer_times" ? true : false,
+                    }
                 });
 
                 await onSuccess();

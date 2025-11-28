@@ -154,15 +154,17 @@ export class NotificationManagerIOS {
                     body: input.content.body,
                     category: input.content.category,
                     'thread-id': input.content.category.replace(/_/g, '-'),
-                    sound: (() => {
-                        if (input.options?.critical) {
-                            return 'default';
-                        }
-                        return 'default';
-                    })(),
                     deepLink: input.content.deepLink,
                     url: input.content.deepLink
                 },
+                // Set interruption level to break through DND
+                'interruption-level': input.options?.critical ? 'critical' : 'time-sensitive',
+                // Configure sound based on critical flag
+                sound: input.options?.critical ? {
+                    critical: 1,
+                    name: 'default',
+                    volume: 1.0
+                } : 'default',
             },
             ...input.content.metadata,
         }
