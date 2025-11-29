@@ -159,16 +159,19 @@ export class NotificationManagerIOS {
     }
 
     private generatePayload(input: z.infer<typeof Notification>) {
+        // Build the aps object according to Apple's specifications
+        // Reference: https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/generating_a_remote_notification
         const payload: Record<string, any> = {
             aps: {
+                // Alert object should only contain display-related fields
                 alert: {
                     title: input.content.title,
                     body: input.content.body,
-                    category: input.content.category,
-                    'thread-id': input.content.category.replace(/_/g, '-'),
-                    deepLink: input.content.deepLink,
-                    url: input.content.deepLink
                 },
+                // Category is used for actionable notifications (outside alert)
+                category: input.content.category,
+                // Thread ID for notification grouping (outside alert)
+                'thread-id': input.content.category.replace(/_/g, '-'),
                 // Set interruption level to break through DND
                 'interruption-level': input.options?.critical ? 'critical' : 'time-sensitive',
                 // Configure sound based on critical flag
@@ -178,6 +181,10 @@ export class NotificationManagerIOS {
                     volume: 1.0
                 } : 'default',
             },
+            // Custom data fields go at root level, outside aps
+            deepLink: input.content.deepLink,
+            url: input.content.deepLink,
+            // Spread any additional metadata at root level
             ...input.content.metadata,
         }
 
