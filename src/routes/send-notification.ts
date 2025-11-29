@@ -111,6 +111,7 @@ export default function route(): RouteOptions {
 
                 return reply.code(200).send({
                     message: "Notification sent successfully",
+                    content
                 });
             } catch (error) {
                 request.log.error(error);
