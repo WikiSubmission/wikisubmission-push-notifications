@@ -14,6 +14,13 @@ export default function route(): RouteOptions {
             try {
                 const inputs = getQueries(request.query, request.params, request.body);
 
+                if (inputs["api_key"] !== process.env.API_KEY) {
+                    return reply.code(401).send({
+                        error: "Unauthorized",
+                        description: "Invalid API key",
+                    });
+                }
+
                 if (
                     !inputs ||
                     !inputs["device_token"] ||
