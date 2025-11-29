@@ -205,7 +205,7 @@ export class NotificationContentIOS {
                 deepLink: `wikisubmission://prayer-times`,
                 expirationHours: 24
             }
-        } else {
+        } else if (force) {
             // Otherwise, return general prayer times
             return {
                 title: `Prayer Times`,
