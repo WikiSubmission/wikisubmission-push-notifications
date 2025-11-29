@@ -121,6 +121,7 @@ export class Server {
                             method: 'POST',
                             body: JSON.stringify({
                                 device_token: notification.device_token,
+                                api_key: process.env.API_KEY,
                             }),
                             headers: {
                                 'Content-Type': 'application/json',
@@ -157,6 +158,7 @@ export class Server {
                         method: 'POST',
                         body: JSON.stringify({
                             device_token: notification.device_token,
+                            api_key: process.env.API_KEY,
                         }),
                         headers: {
                             'Content-Type': 'application/json',
@@ -191,6 +193,7 @@ export class Server {
                         method: 'POST',
                         body: JSON.stringify({
                             device_token: notification.device_token,
+                            api_key: process.env.API_KEY,
                         }),
                         headers: {
                             'Content-Type': 'application/json',
