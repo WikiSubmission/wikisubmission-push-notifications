@@ -10,6 +10,7 @@ export class NotificationManagerIOS {
     
     private primaryEnv: 'production' | 'sandbox' = getEnv('APNS_ENV') === 'production' ? 'production' : 'sandbox';
     private token = this.createApnsJwt();
+    private tokenCreatedAt = Date.now();
     private client: http2.ClientHttp2Session | null = null;
     private currentEnv: 'production' | 'sandbox' = this.primaryEnv;
 
@@ -132,6 +133,17 @@ export class NotificationManagerIOS {
         return invalidTokenReasons.some(reason => errorMessage.includes(reason));
     }
 
+    private getToken(): string {
+        // JWT tokens expire after 1 hour, refresh if older than 50 minutes
+        const fiftyMinutesInMs = 50 * 60 * 1000;
+        if (Date.now() - this.tokenCreatedAt > fiftyMinutesInMs) {
+            console.log('Refreshing expired APNS JWT token...');
+            this.token = this.createApnsJwt();
+            this.tokenCreatedAt = Date.now();
+        }
+        return this.token;
+    }
+
     private generateHeaders(expirationHours: number, deviceToken: string): http2.OutgoingHttpHeaders {
         return {
             ':method': 'POST',
@@ -140,7 +152,7 @@ export class NotificationManagerIOS {
             'apns-topic': getEnv('APNS_BUNDLE_ID'),
             'apns-push-type': 'alert',
             'apns-priority': '10',
-            'authorization': `bearer ${this.token}`,
+            'authorization': `bearer ${this.getToken()}`,
             'apns-expiration': Math.floor(Date.now() / 1000 + expirationHours * 3600).toString(),
             'content-type': 'application/json',
         };
