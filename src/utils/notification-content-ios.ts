@@ -219,7 +219,7 @@ export class NotificationContentIOS {
             // Otherwise, return general prayer times
             return {
                 title: `Prayer Times`,
-                body: `${prayerTimes.status_string}`,
+                body: `${prayerTimes.status_string} (${prayerTimes.location_string})`,
                 category: 'prayer_times',
                 deepLink: `wikisubmission://prayer-times`,
                 expirationHours: 24
