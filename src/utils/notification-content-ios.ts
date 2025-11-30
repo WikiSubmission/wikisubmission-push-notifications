@@ -214,9 +214,9 @@ export class NotificationContentIOS {
                 deepLink: `wikisubmission://prayer-times`,
                 expirationHours: 24
             }
-        } else { 
-          return null;
-       }
+        } else {
+            return null;
+        }
     }
 }
 
