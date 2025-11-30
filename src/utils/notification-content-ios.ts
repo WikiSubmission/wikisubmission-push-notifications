@@ -198,12 +198,22 @@ export class NotificationContentIOS {
 
         // Check if starting soon
         if (prayerTimes.upcoming_prayer_time_left === "10m" || prayerTimes.upcoming_prayer_time_left.length === 2) {
-            return {
-                title: `${capitalized(prayerTimes.upcoming_prayer)} starting soon!`,
-                body: `${prayerTimes.upcoming_prayer_time_left} left (${prayerTimes.times[prayerTimes.upcoming_prayer]})`,
-                category: 'prayer_times',
-                deepLink: `wikisubmission://prayer-times`,
-                expirationHours: 24
+            if (prayerTimes.upcoming_prayer === 'sunrise') {
+                return {
+                    title: `Fajr ending soon!`,
+                    body: `Just making sure. You have ${prayerTimes.times_left.sunrise} till it's Sunrise!`,
+                    category: 'prayer_times',
+                    deepLink: `wikisubmission://prayer-times`,
+                    expirationHours: 24
+                }
+            } else {
+                return {
+                    title: `${capitalized(prayerTimes.upcoming_prayer)} starting soon!`,
+                    body: `${prayerTimes.upcoming_prayer_time_left} left till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer (${prayerTimes.times[prayerTimes.upcoming_prayer]})`,
+                    category: 'prayer_times',
+                    deepLink: `wikisubmission://prayer-times`,
+                    expirationHours: 24
+                }
             }
         } else if (force) {
             // Otherwise, return general prayer times
@@ -222,4 +232,19 @@ export class NotificationContentIOS {
 
 function capitalized(str: string) {
     return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function englishNameForPrayer(prayer: 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha') {
+    switch (prayer) {
+        case 'fajr':
+            return 'dawn';
+        case 'dhuhr':
+            return 'noon';
+        case 'asr':
+            return 'afternoon';
+        case 'maghrib':
+            return 'sunset';
+        case 'isha':
+            return 'night';
+    }
 }
