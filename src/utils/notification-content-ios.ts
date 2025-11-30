@@ -136,12 +136,12 @@ export class NotificationContentIOS {
             enabled,
             location,
             use_midpoint_method_for_asr,
-            fajr, dhuhr, asr, maghrib, isha,
+            fajr, dhuhr, asr, maghrib, isha, sunrise
         } = data.prayer_times_notifications as {
             enabled: boolean | undefined,
             location: string | undefined,
             use_midpoint_method_for_asr: boolean | undefined | undefined,
-            fajr: boolean | undefined, dhuhr: boolean | undefined, asr: boolean | undefined, maghrib: boolean | undefined, isha: boolean | undefined
+            fajr: boolean | undefined, dhuhr: boolean | undefined, asr: boolean | undefined, maghrib: boolean | undefined, isha: boolean | undefined, sunrise: boolean | undefined
         };
 
         // Ensure enabled + valid location
@@ -189,7 +189,7 @@ export class NotificationContentIOS {
         } = await prayerTimesRequest.json();
 
         // Check if specific prayer disabled
-        if (prayerTimes.current_prayer === 'sunrise') return null;
+        if (prayerTimes.current_prayer === 'sunrise' && !sunrise) return null;
         if (prayerTimes.current_prayer === 'fajr' && !fajr) return null;
         if (prayerTimes.current_prayer === 'dhuhr' && !dhuhr) return null;
         if (prayerTimes.current_prayer === 'asr' && !asr) return null;
