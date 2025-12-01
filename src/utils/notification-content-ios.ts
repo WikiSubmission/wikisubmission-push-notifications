@@ -201,7 +201,7 @@ export class NotificationContentIOS {
             if (prayerTimes.upcoming_prayer === 'sunrise') {
                 return {
                     title: `Fajr ending soon!`,
-                    body: `Just making sure. You have ${prayerTimes.times_left.sunrise} till it's Sunrise!`,
+                    body: `You have ${prayerTimes.times_left.sunrise} till it's Sunrise!`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
                     expirationHours: 24
