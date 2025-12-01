@@ -197,7 +197,15 @@ export class NotificationContentIOS {
         if (prayerTimes.current_prayer === 'isha' && !isha) return null;
 
         // Check if starting soon
-        if (prayerTimes.upcoming_prayer_time_left === "10m" || prayerTimes.upcoming_prayer_time_left.length === 2) {
+        if (
+            prayerTimes.upcoming_prayer_time_left === "10m" || 
+            prayerTimes.upcoming_prayer_time_left === "11m" || 
+            prayerTimes.upcoming_prayer_time_left === "12m" || 
+            prayerTimes.upcoming_prayer_time_left === "13m" || 
+            prayerTimes.upcoming_prayer_time_left === "14m" || 
+            prayerTimes.upcoming_prayer_time_left === "15m" || 
+            prayerTimes.upcoming_prayer_time_left.length === 2
+        ) {
             if (prayerTimes.upcoming_prayer === 'sunrise') {
                 return {
                     title: `Fajr ending soon!`,
