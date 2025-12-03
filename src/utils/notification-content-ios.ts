@@ -233,14 +233,12 @@ export class NotificationContentIOS {
             prayerTimes.upcoming_prayer_time_left === "11m" || 
             prayerTimes.upcoming_prayer_time_left === "12m" || 
             prayerTimes.upcoming_prayer_time_left === "13m" || 
-            prayerTimes.upcoming_prayer_time_left === "14m" || 
-            prayerTimes.upcoming_prayer_time_left === "15m" || 
             prayerTimes.upcoming_prayer_time_left.length === 2
         ) {
             if (prayerTimes.upcoming_prayer === 'sunrise') {
                 return {
                     title: `Fajr ending soon!`,
-                    body: `You have ${prayerTimes.times_left.sunrise} till it's Sunrise!`,
+                    body: `${prayerTimes.times_left.sunrise} till Sunrise!`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
                     expirationHours: 24
@@ -248,7 +246,7 @@ export class NotificationContentIOS {
             } else {
                 return {
                     title: `${capitalized(prayerTimes.upcoming_prayer)} starting soon!`,
-                    body: `${prayerTimes.upcoming_prayer_time_left} left till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer (${prayerTimes.times[prayerTimes.upcoming_prayer]})`,
+                    body: `${prayerTimes.upcoming_prayer_time_left} till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer! (@ ${prayerTimes.times[prayerTimes.upcoming_prayer]})`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
                     expirationHours: 24
