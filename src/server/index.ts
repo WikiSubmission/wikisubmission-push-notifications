@@ -140,7 +140,7 @@ export class Server {
                         }
                         
                         // Small delay between notifications to avoid overwhelming connections
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await new Promise(resolve => setTimeout(resolve, 250));
                     }
                 }
             }
@@ -185,8 +185,7 @@ export class Server {
                         this.error(`Network error sending daily verse notification: ${fetchError}`);
                     }
 
-                    // Small delay between notifications to avoid overwhelming connections
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, 250));
                 }
             }
         }, 1000 * 60 * 60 * 2 // 2 hours
@@ -230,7 +229,7 @@ export class Server {
                     }
 
                     // Small delay between notifications to avoid overwhelming connections
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, 250));
                 }
             }
         }, 1000 * 60 * 60 * 3 // 3 hours
