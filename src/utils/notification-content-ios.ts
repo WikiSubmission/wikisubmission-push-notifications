@@ -154,12 +154,43 @@ export class NotificationContentIOS {
             return null;
         }
 
-        // Return prayer times
-        const prayerTimesRequest = await fetch(`https://practices.wikisubmission.org/prayer-times/${location}${use_midpoint_method_for_asr ? '?asr_adjustment=true' : ''}`);
+        // Return prayer times (with timeout and retry)
+        const prayerTimesUrl = `https://practices.wikisubmission.org/prayer-times/${location}${use_midpoint_method_for_asr ? '?asr_adjustment=true' : ''}`;
+        
+        let prayerTimesRequest: Response | null = null;
+        let lastError: Error | null = null;
+        
+        // Retry up to 3 times with increasing delays
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+                
+                prayerTimesRequest = await fetch(prayerTimesUrl, {
+                    signal: controller.signal,
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (prayerTimesRequest.ok) {
+                    break; // Success, exit retry loop
+                }
+                
+                lastError = new Error(prayerTimesRequest.statusText);
+            } catch (err: any) {
+                lastError = err;
+                console.error(`Prayer times fetch attempt ${attempt} failed:`, err.message);
+                
+                // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
+                }
+            }
+        }
 
-        if (!prayerTimesRequest.ok) {
-            console.error(`Error getting prayer times`, prayerTimesRequest.statusText);
-            throw new Error(prayerTimesRequest.statusText);
+        if (!prayerTimesRequest || !prayerTimesRequest.ok) {
+            console.error(`Error getting prayer times after 3 attempts`, lastError?.message);
+            throw new Error(lastError?.message || 'Failed to fetch prayer times');
         }
 
         const prayerTimes: {

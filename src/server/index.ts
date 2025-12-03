@@ -107,7 +107,7 @@ export class Server {
                 .select('*');
 
             if (error) {
-                this.error(`Error getting notifications`, true);
+                this.error(`Error getting notifications`);
                 return;
             }
 
@@ -116,22 +116,31 @@ export class Server {
                 if (notification.prayer_times_notifications) {
                     const { enabled } = notification.prayer_times_notifications as { enabled: boolean };
                     if (enabled !== false) {
-                        // Attempt to send notifications if applicable
-                        const response = await fetch(`http://localhost:${this.port}/send-notification?platform=ios&type=prayer_times`, {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                device_token: notification.device_token,
-                                api_key: process.env.API_KEY,
-                            }),
-                            headers: {
-                                'Content-Type': 'application/json',
-                            }
-                        });
+                        try {
+                            // Attempt to send notifications if applicable
+                            const response = await fetch(`http://localhost:${this.port}/send-notification?platform=ios&type=prayer_times`, {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    device_token: notification.device_token,
+                                    api_key: process.env.API_KEY,
+                                }),
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                }
+                            });
 
-                        if (!response.ok) {
-                            console.log(await response.json());
-                            this.error(`Error sending prayer times notification`, true);
+                            if (!response.ok) {
+                                try {
+                                    console.log(await response.json());
+                                } catch { }
+                                this.error(`Error sending prayer times notification`);
+                            }
+                        } catch (fetchError) {
+                            this.error(`Network error sending prayer times notification: ${fetchError}`);
                         }
+                        
+                        // Small delay between notifications to avoid overwhelming connections
+                        await new Promise(resolve => setTimeout(resolve, 100));
                     }
                 }
             }
@@ -146,29 +155,38 @@ export class Server {
                 .select('*');
 
             if (error) {
-                this.error(`Error getting notifications`, true);
+                this.error(`Error getting notifications`);
                 return;
             }
 
             for (const notification of data) {
                 // Ensure daily verses are enabled
                 if (notification.daily_verse_notifications) {
-                    // Attempt to send notifications if applicable
-                    const response = await fetch(`http://localhost:${this.port}/send-notification?platform=ios&type=daily_verse`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            device_token: notification.device_token,
-                            api_key: process.env.API_KEY,
-                        }),
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                    });
+                    try {
+                        // Attempt to send notifications if applicable
+                        const response = await fetch(`http://localhost:${this.port}/send-notification?platform=ios&type=daily_verse`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                device_token: notification.device_token,
+                                api_key: process.env.API_KEY,
+                            }),
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                        });
 
-                    if (!response.ok) {
-                        console.log(await response.json());
-                        this.error(`Error sending daily verse notification`, true);
+                        if (!response.ok) {
+                            try {
+                                console.log(await response.json());
+                            } catch { }
+                            this.error(`Error sending daily verse notification`);
+                        }
+                    } catch (fetchError) {
+                        this.error(`Network error sending daily verse notification: ${fetchError}`);
                     }
+
+                    // Small delay between notifications to avoid overwhelming connections
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
             }
         }, 1000 * 60 * 60 * 2 // 2 hours
@@ -181,29 +199,38 @@ export class Server {
                 .select('*');
 
             if (error) {
-                this.error(`Error getting notifications`, true);
+                this.error(`Error getting notifications`);
                 return;
             }
 
             for (const notification of data) {
                 // Ensure daily chapters are enabled
                 if (notification.daily_chapter_notifications) {
-                    // Attempt to send notifications if applicable
-                    const response = await fetch(`http://localhost:${this.port}/send-notification?platform=ios&type=daily_chapter`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            device_token: notification.device_token,
-                            api_key: process.env.API_KEY,
-                        }),
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    });
+                    try {
+                        // Attempt to send notifications if applicable
+                        const response = await fetch(`http://localhost:${this.port}/send-notification?platform=ios&type=daily_chapter`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                device_token: notification.device_token,
+                                api_key: process.env.API_KEY,
+                            }),
+                            headers: {
+                                'Content-Type': 'application/json',
+                            }
+                        });
 
-                    if (!response.ok) {
-                        console.log(await response.json());
-                        this.error(`Error sending daily chapter notification`, true);
+                        if (!response.ok) {
+                            try {
+                                console.log(await response.json());
+                            } catch { }
+                            this.error(`Error sending daily chapter notification`);
+                        }
+                    } catch (fetchError) {
+                        this.error(`Network error sending daily chapter notification: ${fetchError}`);
                     }
+
+                    // Small delay between notifications to avoid overwhelming connections
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
             }
         }, 1000 * 60 * 60 * 3 // 3 hours

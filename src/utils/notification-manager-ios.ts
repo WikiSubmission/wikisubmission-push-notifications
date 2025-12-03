@@ -21,12 +21,31 @@ export class NotificationManagerIOS {
     }
 
     private getClient(env: 'production' | 'sandbox'): http2.ClientHttp2Session {
-        if (!this.client || this.client.destroyed || this.currentEnv !== env) {
+        if (!this.client || this.client.destroyed || this.client.closed || this.currentEnv !== env) {
             if (this.client && !this.client.destroyed) {
-                this.client.close();
+                try {
+                    this.client.close();
+                } catch { }
             }
             this.currentEnv = env;
             this.client = http2.connect(this.getBaseURL(env));
+            
+            // Handle connection errors gracefully
+            this.client.on('error', (err) => {
+                console.error(`HTTP/2 connection error (${env}):`, err.message);
+                // Force reconnection on next request
+                if (this.client) {
+                    try {
+                        this.client.close();
+                    } catch { }
+                    this.client = null;
+                }
+            });
+
+            // Handle connection close
+            this.client.on('close', () => {
+                this.client = null;
+            });
         }
         return this.client;
     }
@@ -75,10 +94,36 @@ export class NotificationManagerIOS {
         const payload = this.generatePayload(input);
 
         return new Promise((resolve, reject) => {
-            const client = this.getClient(env);
-            const req = client.request(headers);
+            let client: http2.ClientHttp2Session;
+            
+            try {
+                client = this.getClient(env);
+            } catch (err: any) {
+                // Force reconnection on next attempt
+                this.client = null;
+                reject(new Error(`Failed to get HTTP/2 client: ${err.message}`));
+                return;
+            }
 
+            // Check if client is still usable
+            if (client.destroyed || client.closed) {
+                this.client = null;
+                reject(new Error('HTTP/2 client is not available, will reconnect on next request'));
+                return;
+            }
+
+            const req = client.request(headers);
             let data = '';
+            let isResolved = false;
+
+            // Add timeout for the request
+            const timeout = setTimeout(() => {
+                if (!isResolved) {
+                    isResolved = true;
+                    req.close();
+                    reject(new Error('APNS request timed out after 30 seconds'));
+                }
+            }, 30000);
 
             req.on('response', (headers) => {
                 const status = headers[':status'];
@@ -88,21 +133,37 @@ export class NotificationManagerIOS {
                         data += chunk;
                     });
                     req.on('end', () => {
-                        reject(new Error(`APNS request failed with status ${status}: ${data}`));
+                        if (!isResolved) {
+                            isResolved = true;
+                            clearTimeout(timeout);
+                            reject(new Error(`APNS request failed with status ${status}: ${data}`));
+                        }
                     });
                 } else {
                     req.on('data', (chunk) => {
                         data += chunk;
                     });
                     req.on('end', () => {
-                        console.log(`✓ Notification '${input.content.category}' delivery successful (${env})`);
-                        resolve(data ? JSON.parse(data) : {});
+                        if (!isResolved) {
+                            isResolved = true;
+                            clearTimeout(timeout);
+                            console.log(`✓ Notification '${input.content.category}' delivery successful (${env})`);
+                            resolve(data ? JSON.parse(data) : {});
+                        }
                     });
                 }
             });
 
             req.on('error', (err) => {
-                reject(new Error(`APNS request error: ${err.message}`));
+                if (!isResolved) {
+                    isResolved = true;
+                    clearTimeout(timeout);
+                    // Force client reconnection on connection errors
+                    if (err.message.includes('ECONNRESET') || err.message.includes('GOAWAY') || err.message.includes('socket hang up')) {
+                        this.client = null;
+                    }
+                    reject(new Error(`APNS request error: ${err.message}`));
+                }
             });
 
             req.write(JSON.stringify(payload));
