@@ -149,8 +149,8 @@ export class NotificationContentIOS {
             return null;
         }
 
-        // Check if prayer times sent within last 1 hour
-        if (!force && data.prayer_times_last_delivery_at && !hasTimePassed(data.prayer_times_last_delivery_at, 1, 'hours')) {
+        // Check if prayer times sent within last half hour
+        if (!force && data.prayer_times_last_delivery_at && !hasTimePassed(data.prayer_times_last_delivery_at, 30, 'minutes')) {
             return null;
         }
 
