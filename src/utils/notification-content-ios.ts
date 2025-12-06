@@ -234,8 +234,8 @@ export class NotificationContentIOS {
         ) {
             if (prayerTimes.upcoming_prayer === 'sunrise') {
                 return {
-                    title: `${prayerTimes.times_left.sunrise} till sunrise`,
-                    body: `Fajr is ending soon!`,
+                    title: `${prayerTimes.times_left.sunrise} till sunrise!`,
+                    body: `Fajr ends at ${prayerTimes.times.fajr}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
                     expirationHours: 24
@@ -243,7 +243,7 @@ export class NotificationContentIOS {
             } else {
                 return {
                     title: `${prayerTimes.upcoming_prayer_time_left} till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer!`,
-                    body: `${capitalized(prayerTimes.upcoming_prayer)} starting soon, at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
+                    body: `${capitalized(prayerTimes.upcoming_prayer)} starts at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
                     expirationHours: 24
