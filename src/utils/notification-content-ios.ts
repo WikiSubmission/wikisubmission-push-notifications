@@ -230,9 +230,6 @@ export class NotificationContentIOS {
         // Check if starting soon
         if (
             prayerTimes.upcoming_prayer_time_left === "10m" || 
-            prayerTimes.upcoming_prayer_time_left === "11m" || 
-            prayerTimes.upcoming_prayer_time_left === "12m" || 
-            prayerTimes.upcoming_prayer_time_left === "13m" || 
             prayerTimes.upcoming_prayer_time_left.length === 2
         ) {
             if (prayerTimes.upcoming_prayer === 'sunrise') {
