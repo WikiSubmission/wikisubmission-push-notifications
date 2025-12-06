@@ -238,7 +238,7 @@ export class NotificationContentIOS {
                     body: `Fajr ends at ${prayerTimes.times.sunrise}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
-                    expirationHours: 24
+                    expirationHours: 12
                 }
             } else {
                 return {
@@ -246,7 +246,7 @@ export class NotificationContentIOS {
                     body: `${capitalized(prayerTimes.upcoming_prayer)} starts at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
-                    expirationHours: 24
+                    expirationHours: 12
                 }
             }
         } else if (force) {
@@ -256,7 +256,7 @@ export class NotificationContentIOS {
                 body: `${prayerTimes.status_string} (${prayerTimes.location_string})`,
                 category: 'prayer_times',
                 deepLink: `wikisubmission://prayer-times`,
-                expirationHours: 24
+                expirationHours: 12
             }
         } else {
             return null;
