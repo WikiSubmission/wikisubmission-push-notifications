@@ -231,7 +231,7 @@ export class NotificationContentIOS {
                 if (prayerTimes.upcoming_prayer === 'dhuhr' && dhuhr === false) return null;
                 if (prayerTimes.upcoming_prayer === 'asr' && asr === false) return null;
                 if (prayerTimes.upcoming_prayer === 'maghrib' && maghrib === false) return null;
-                if (prayerTimes.upcoming_prayer === 'isha' && isha) return null;
+                if (prayerTimes.upcoming_prayer === 'isha' && isha === false) return null;
             }
 
             if (prayerTimes.upcoming_prayer === 'sunrise') {
