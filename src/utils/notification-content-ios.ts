@@ -156,31 +156,31 @@ export class NotificationContentIOS {
 
         // Return prayer times (with timeout and retry)
         const prayerTimesUrl = `https://practices.wikisubmission.org/prayer-times/${location}${use_midpoint_method_for_asr ? '?asr_adjustment=true' : ''}`;
-        
+
         let prayerTimesRequest: Response | null = null;
         let lastError: Error | null = null;
-        
+
         // Retry up to 3 times with increasing delays
         for (let attempt = 1; attempt <= 3; attempt++) {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-                
+
                 prayerTimesRequest = await fetch(prayerTimesUrl, {
                     signal: controller.signal,
                 });
-                
+
                 clearTimeout(timeoutId);
-                
+
                 if (prayerTimesRequest.ok) {
                     break; // Success, exit retry loop
                 }
-                
+
                 lastError = new Error(prayerTimesRequest.statusText);
             } catch (err: any) {
                 lastError = err;
                 console.error(`Prayer times fetch attempt ${attempt} failed:`, err.message);
-                
+
                 // Wait before retrying (exponential backoff: 1s, 2s, 4s)
                 if (attempt < 3) {
                     await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
@@ -219,19 +219,21 @@ export class NotificationContentIOS {
             upcoming_prayer_time_left: string;
         } = await prayerTimesRequest.json();
 
-        // Check if specific prayer disabled
-        if (prayerTimes.current_prayer === 'sunrise' && !sunrise) return null;
-        if (prayerTimes.current_prayer === 'fajr' && !fajr) return null;
-        if (prayerTimes.current_prayer === 'dhuhr' && !dhuhr) return null;
-        if (prayerTimes.current_prayer === 'asr' && !asr) return null;
-        if (prayerTimes.current_prayer === 'maghrib' && !maghrib) return null;
-        if (prayerTimes.current_prayer === 'isha' && !isha) return null;
-
         // Check if starting soon
         if (
-            prayerTimes.upcoming_prayer_time_left === "10m" || 
+            prayerTimes.upcoming_prayer_time_left === "10m" ||
             prayerTimes.upcoming_prayer_time_left.length === 2
         ) {
+            // Check if specific prayer notification is disabled by user
+            if (!force) {
+                if (prayerTimes.upcoming_prayer === 'sunrise' && sunrise === false) return null;
+                if (prayerTimes.upcoming_prayer === 'fajr' && fajr === false) return null;
+                if (prayerTimes.upcoming_prayer === 'dhuhr' && dhuhr === false) return null;
+                if (prayerTimes.upcoming_prayer === 'asr' && asr === false) return null;
+                if (prayerTimes.upcoming_prayer === 'maghrib' && maghrib === false) return null;
+                if (prayerTimes.upcoming_prayer === 'isha' && isha) return null;
+            }
+
             if (prayerTimes.upcoming_prayer === 'sunrise') {
                 return {
                     title: `${prayerTimes.times_left.sunrise} till sunrise!`,
