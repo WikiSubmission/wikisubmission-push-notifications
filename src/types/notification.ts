@@ -9,6 +9,7 @@ export const NotificationTypes = z.enum([
     "daily_verse",
     "daily_chapter",
     "prayer_times",
+    "custom",
 ]);
 
 export const Notification = z.object({

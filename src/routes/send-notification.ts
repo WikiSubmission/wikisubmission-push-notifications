@@ -33,6 +33,16 @@ export default function route(): RouteOptions {
                     });
                 }
 
+                // Additional validation for custom notifications
+                if (inputs["type"] === "custom") {
+                    if (!inputs["title"]) {
+                        return reply.code(400).send({
+                            error: "Bad Request",
+                            description: "Custom notifications require 'title' and 'message' parameters",
+                        });
+                    }
+                }
+
                 let content: z.infer<typeof Notification>["content"] | null = null;
 
                 let onSuccess: () => Promise<void> = async () => { };
@@ -81,6 +91,24 @@ export default function route(): RouteOptions {
                                 .update({
                                     last_delivery_at: new Date().toISOString(),
                                     prayer_times_last_delivery_at: new Date().toISOString(),
+                                })
+                                .eq('device_token', inputs["device_token"]);
+                        }
+                        break;
+                    case "custom":
+                        content = {
+                            title: inputs["title"],
+                            body: inputs["message"],
+                            category: 'custom',
+                            deepLink: inputs["deep_link"] || "wikisubmission://home",
+                            expirationHours: inputs["expiration_hours"] ? parseInt(inputs["expiration_hours"]) : 24,
+                            metadata: {}
+                        };
+                        onSuccess = async () => {
+                            await getSupabaseInternalClient()
+                                .from('ws_notifications_ios')
+                                .update({
+                                    last_delivery_at: new Date().toISOString(),
                                 })
                                 .eq('device_token', inputs["device_token"]);
                         }
