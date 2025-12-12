@@ -246,7 +246,7 @@ export class NotificationContentIOS {
 
             if (prayerTimes.upcoming_prayer === 'sunrise') {
                 return {
-                    title: `${prayerTimes.times_left.sunrise} till sunrise!`,
+                    title: `${prayerTimes.times_left.sunrise} till sunrise`,
                     body: `Fajr ends at ${prayerTimes.times.sunrise}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
@@ -254,7 +254,7 @@ export class NotificationContentIOS {
                 }
             } else {
                 return {
-                    title: `${isFriday(prayerTimes) && prayerTimes.upcoming_prayer === 'dhuhr' ? 'Happy Friday! ' : ''}${prayerTimes.upcoming_prayer_time_left} till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer!`,
+                    title: `${isFriday(prayerTimes) && prayerTimes.upcoming_prayer === 'dhuhr' ? 'Happy Friday! ' : ''}${prayerTimes.upcoming_prayer_time_left} till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer`,
                     body: `${capitalized(prayerTimes.upcoming_prayer)} starts at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
@@ -264,8 +264,8 @@ export class NotificationContentIOS {
         } else if (force) {
             // Otherwise, return general prayer times
             return {
-                title: `Prayer Times`,
-                body: `${prayerTimes.status_string} (${prayerTimes.location_string})`,
+                title: `${prayerTimes.status_string}`,
+                body: `${prayerTimes.location_string}`,
                 category: 'prayer_times',
                 deepLink: `wikisubmission://prayer-times`,
                 expirationHours: 12
