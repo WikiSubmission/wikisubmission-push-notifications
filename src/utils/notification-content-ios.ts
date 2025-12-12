@@ -250,7 +250,7 @@ export class NotificationContentIOS {
                     body: `Fajr ends at ${prayerTimes.times.sunrise}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
-                    expirationHours: 12
+                    expirationHours: 5
                 }
             } else {
                 return {
@@ -258,17 +258,27 @@ export class NotificationContentIOS {
                     body: `${capitalized(prayerTimes.upcoming_prayer)} starts at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
-                    expirationHours: 12
+                    expirationHours: 5
                 }
             }
         } else if (force) {
             // Otherwise, return general prayer times
-            return {
-                title: `${prayerTimes.status_string}`,
-                body: `${prayerTimes.location_string}`,
-                category: 'prayer_times',
-                deepLink: `wikisubmission://prayer-times`,
-                expirationHours: 12
+            if (prayerTimes.upcoming_prayer === 'sunrise') {
+                return {
+                    title: `${prayerTimes.times_left.sunrise} till sunrise`,
+                    body: `Fajr ends at ${prayerTimes.times.sunrise}`,
+                    category: 'prayer_times',
+                    deepLink: `wikisubmission://prayer-times`,
+                    expirationHours: 5
+                }
+            } else {
+                return {
+                    title: `${isFriday(prayerTimes) && prayerTimes.upcoming_prayer === 'dhuhr' ? 'Happy Friday! ' : ''}${prayerTimes.upcoming_prayer_time_left} till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer`,
+                    body: `${capitalized(prayerTimes.upcoming_prayer)} starts at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
+                    category: 'prayer_times',
+                    deepLink: `wikisubmission://prayer-times`,
+                    expirationHours: 5
+                }
             }
         } else {
             return null;
