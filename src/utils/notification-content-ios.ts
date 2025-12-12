@@ -197,6 +197,7 @@ export class NotificationContentIOS {
             status_string: string;
             location_string: string;
             local_time: string;
+            local_timezone_id?: string;
             times: {
                 fajr: string;
                 dhuhr: string;
@@ -204,6 +205,15 @@ export class NotificationContentIOS {
                 maghrib: string;
                 isha: string;
                 sunrise: string;
+            }
+            times_in_utc?: {
+                fajr: string;
+                dhuhr: string;
+                asr: string;
+                maghrib: string;
+                isha: string;
+                sunrise: string;
+                sunset: string;
             }
             times_left: {
                 fajr: string;
@@ -244,7 +254,7 @@ export class NotificationContentIOS {
                 }
             } else {
                 return {
-                    title: `${prayerTimes.upcoming_prayer_time_left} till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer!`,
+                    title: `${isFriday(prayerTimes) && prayerTimes.upcoming_prayer === 'dhuhr' ? 'Happy Friday! ' : ''}${prayerTimes.upcoming_prayer_time_left} till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer!`,
                     body: `${capitalized(prayerTimes.upcoming_prayer)} starts at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
                     category: 'prayer_times',
                     deepLink: `wikisubmission://prayer-times`,
@@ -268,6 +278,27 @@ export class NotificationContentIOS {
 
 function capitalized(str: string) {
     return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function isFriday(prayerTimes: {
+    times_in_utc?: { fajr: string };
+    local_timezone_id?: string;
+}) {
+    try {
+        // Use the fajr time in UTC and convert to user's timezone to determine day
+        const fajrTimeUTC = prayerTimes.times_in_utc?.fajr;
+        if (fajrTimeUTC) {
+            const fajrDate = new Date(fajrTimeUTC);
+            // Convert to user's timezone and check if it's Friday (5)
+            return fajrDate.toLocaleDateString('en-US', {
+                timeZone: prayerTimes.local_timezone_id || 'UTC',
+                weekday: 'long'
+            }) === 'Friday';
+        }
+    } catch (error) {
+        console.warn('Error determining day of week:', error);
+    }
+    return false;
 }
 
 function englishNameForPrayer(prayer: 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha') {
