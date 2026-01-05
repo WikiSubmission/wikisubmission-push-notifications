@@ -121,7 +121,7 @@ export default function route(): RouteOptions {
                 }
 
                 if (!content) {
-                    return reply.code(200).send({
+                    return reply.code(400).send({
                         message: "Notification conditions not met",
                         description: "Please try again later, or, use the 'force' parameter if applicable",
                     });
@@ -130,7 +130,7 @@ export default function route(): RouteOptions {
                 await NotificationManagerIOS.shared.send({
                     token: inputs["device_token"],
                     content,
-                    options: { 
+                    options: {
                         critical: inputs["type"] === "prayer_times" ? true : false,
                     }
                 });
