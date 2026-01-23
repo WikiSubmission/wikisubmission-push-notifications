@@ -107,10 +107,12 @@ export default function route(): RouteOptions {
                         console.error(error);
                         reply.status(400).send({ success: false });
                     }
+                    break;
                 }
 
                 default: {
                     reply.status(400).send({ success: false, message: "Category not implemented yet" });
+                    break;
                 }
             }
         }
