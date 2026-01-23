@@ -19,9 +19,12 @@ export async function getFileExports<T>(
     // Check if we're running TypeScript directly (tsx, ts-node, etc.)
     const isTypeScript = process.versions?.tsnode || __filename.endsWith('.ts');
 
+    const rootDir = path.join(__dirname, '../');
+    const hasSrc = fs.existsSync(path.join(rootDir, 'src'));
+
     const targetDirectory = path.join(
-        __dirname,
-        `../../${isTypeScript ? 'src' : 'build'}`,
+        rootDir,
+        isTypeScript ? (hasSrc ? 'src' : '.') : 'build',
         directoryPath.startsWith('/') ? directoryPath.slice(1) : directoryPath,
     );
 

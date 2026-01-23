@@ -15,14 +15,39 @@ export default function route(): RouteOptions {
 
             const { api_key, device_token, platform, category } = queries;
 
-            if (!api_key || api_key !== getEnv("WIKISUBMISSION_API_KEY")) {
-                reply.status(400).send({ success: false, message: "Invalid API key" });
-                return;
+            let authenticatedUserId: string | null = null;
+            if (api_key !== getEnv("WIKISUBMISSION_API_KEY")) {
+                const authHeader = request.headers.authorization;
+                if (authHeader && authHeader.startsWith("Bearer ")) {
+                    const token = authHeader.split(" ")[1];
+                    const { data: { user }, error } = await supabaseClient().auth.getUser(token);
+                    if (user && !error) {
+                        authenticatedUserId = user.id;
+                    }
+                }
+
+                if (!authenticatedUserId) {
+                    reply.status(401).send({ success: false, message: "Invalid API key or unauthorized" });
+                    return;
+                }
             }
 
             if (!device_token || !platform || !category) {
                 reply.status(400).send({ success: false, message: "Missing one or more required parameter(s): 'device_token', 'platform', 'category'" });
                 return;
+            }
+
+            if (authenticatedUserId) {
+                const { data: userRecord } = await supabaseClient()
+                    .from("ws_push_notifications_users")
+                    .select("user_id")
+                    .eq("device_token", device_token)
+                    .single();
+
+                if (!userRecord || userRecord.user_id !== authenticatedUserId) {
+                    reply.status(403).send({ success: false, message: "Unauthorized: Device token does not belong to user" });
+                    return;
+                }
             }
 
             if (!(category in NotificationCategories.enum)) {
