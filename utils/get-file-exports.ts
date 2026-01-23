@@ -20,11 +20,9 @@ export async function getFileExports<T>(
     const isTypeScript = process.versions?.tsnode || __filename.endsWith('.ts');
 
     const rootDir = path.join(__dirname, '../');
-    const hasSrc = fs.existsSync(path.join(rootDir, 'src'));
 
     const targetDirectory = path.join(
         rootDir,
-        isTypeScript ? (hasSrc ? 'src' : '.') : 'build',
         directoryPath.startsWith('/') ? directoryPath.slice(1) : directoryPath,
     );
 
@@ -37,6 +35,7 @@ export async function getFileExports<T>(
 
     for (const file of fs.readdirSync(targetDirectory)) {
         if (file.startsWith('_')) continue;
+        if (!file.endsWith('.ts') && !file.endsWith('.js')) continue;
         if (opts?.enforcePrefix && !file.startsWith(opts.enforcePrefix)) continue;
         if (opts?.ignoreChildrenDirectories && file.includes('/')) continue;
 
