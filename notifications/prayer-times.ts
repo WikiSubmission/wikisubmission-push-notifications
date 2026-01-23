@@ -107,8 +107,9 @@ export class PrayerTimesNotification extends NotificationProtocol {
                             continue;
                         }
 
+                        // [Skip if notification sent within last 10m]
                         const time = existingItem.delivered_at || existingItem.created_at;
-                        if (new Date(time).getTime() > Date.now() - 1000 * 60 * 60) {
+                        if (new Date(time).getTime() > Date.now() - 1000 * 60 * 10) {
                             console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - notification recently sent`);
                             continue;
                         }
@@ -129,9 +130,11 @@ export class PrayerTimesNotification extends NotificationProtocol {
                         continue;
                     }
 
+                    // [Looking good, generate payload]
                     const payload = this.generateNotificationPayload(recipient.device_token, prayerTimes);
 
-                    // [Add to queue]
+                    // [Enqueue the notification with the payload]
+                    // [The queue is separately processed and should trigger within a minute]
                     const { error } = await supabaseClient()
                         .from("ws_push_notifications_queue")
                         .insert({
@@ -139,7 +142,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
                             device_token: recipient.device_token,
                             status: NotificationStatuses.enum.DELIVERY_PENDING,
                             category: NotificationCategories.enum.PRAYER_TIMES,
-                            payload: payload as any // supabase expects Json
+                            payload: payload as any
                         });
 
                     if (error) {
