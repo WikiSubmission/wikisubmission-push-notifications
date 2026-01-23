@@ -39,7 +39,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
             .single();
 
         if (!recipient) return true;
-        if (recipient.enabled === false) return true;
+        if (!recipient.enabled) return true;
         if (!recipient.prayer_times) return true;
         if (recipient.prayer_times.enabled === false) return true;
 
@@ -123,9 +123,11 @@ export class PrayerTimesNotification extends NotificationProtocol {
                     if (prayerTimes.current_prayer === "maghrib" && !recipient.prayer_times.sunset) continue;
                     if (prayerTimes.current_prayer === "isha" && !recipient.prayer_times.night) continue;
 
-                    // [Skip if > 10m left]
-                    // ["10m" = 3 characters, slightly later is okay]
-                    if (prayerTimes.upcoming_prayer_time_left.length > 3) {
+                    // [Skip if > '11m' or more left, goal is 10m or under]
+                    if (
+                        prayerTimes.upcoming_prayer_time_left.length > 2
+                        && prayerTimes.upcoming_prayer !== '10m'
+                    ) {
                         console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - prayer too far away (${prayerTimes.upcoming_prayer_time_left})`);
                         continue;
                     }
