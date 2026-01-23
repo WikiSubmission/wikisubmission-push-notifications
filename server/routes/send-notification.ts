@@ -1,10 +1,10 @@
 import { RouteOptions } from "fastify";
 import { parseQueries } from "../../utils/parse-queries";
-import { NotificationCategories } from "../../notifications/notification-types";
-import { PrayerTimesNotification } from "../../notifications/prayer-times";
+import { NotificationCategories, NotificationStatuses } from "../../notifications/notification-types";
 import { IOSClient } from "../../utils/ios-client";
 import { supabaseClient } from "../../utils/supabase-client";
 import { getEnv } from "../../utils/get-env";
+import { PrayerTimesNotification } from "../../notifications/prayer-times";
 
 export default function route(): RouteOptions {
     return {
@@ -38,33 +38,55 @@ export default function route(): RouteOptions {
                 .eq("device_token", device_token)
                 .single();
 
-            if (!userData?.location) {
-                reply.status(400).send({ success: false });
-                return;
-            }
+            switch (category) {
+                case NotificationCategories.enum.PRAYER_TIMES: {
 
-            const prayerTimes = await notification.fetchPrayerTimes(userData.location, userData.afternoon_midpoint_method === true);
+                    if (!userData?.location) {
+                        reply.status(400).send({ success: false, message: "Missing location" });
+                        return;
+                    }
 
-            if (!prayerTimes) {
-                reply.status(400).send({ success: false });
-                return;
-            }
+                    const prayerTimes = await notification.fetchPrayerTimes(userData.location, userData.afternoon_midpoint_method === true);
 
-            const payload = notification.generateNotificationPayload(device_token, prayerTimes);
+                    if (!prayerTimes) {
+                        reply.status(400).send({ success: false, message: "Failed to fetch prayer times" });
+                        return;
+                    }
 
-            if (!payload) {
-                reply.status(400).send({ success: false });
-                return;
-            }
+                    const payload = notification.generateNotificationPayload(device_token, prayerTimes);
 
-            try {
-                await new IOSClient().send({
-                    ...payload
-                });
-                reply.status(200).send({ success: true });
-            } catch (error) {
-                console.error(error);
-                reply.status(400).send({ success: false });
+                    if (!payload) {
+                        reply.status(400).send({ success: false, message: "Failed to generate notification payload" });
+                        return;
+                    }
+
+                    try {
+                        await new IOSClient().send({
+                            ...payload
+                        });
+
+                        // Record the "forced" notification in the queue so automatic logic can see it
+                        await supabaseClient()
+                            .from("ws_push_notifications_queue")
+                            .insert({
+                                scheduled_time: new Date().toISOString(),
+                                delivered_at: new Date().toISOString(),
+                                device_token,
+                                category: NotificationCategories.enum.PRAYER_TIMES,
+                                status: NotificationStatuses.enum.DELIVERY_SUCCEEDED,
+                                payload
+                            });
+
+                        reply.status(200).send({ success: true });
+                    } catch (error) {
+                        console.error(error);
+                        reply.status(400).send({ success: false });
+                    }
+                }
+
+                default: {
+                    reply.status(400).send({ success: false, message: "Category not implemented yet" });
+                }
             }
         }
     }

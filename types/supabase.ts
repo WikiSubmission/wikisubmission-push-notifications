@@ -244,6 +244,7 @@ export type Database = {
           enabled: boolean
           id: string
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -251,6 +252,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -258,42 +260,11 @@ export type Database = {
           enabled?: boolean
           id?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "ws_push_notifications_registry_announcements_device_token_fkey"
-            columns: ["device_token"]
-            isOneToOne: true
-            referencedRelation: "ws_push_notifications_users"
-            referencedColumns: ["device_token"]
-          },
-        ]
-      }
-      ws_push_notifications_registry_daily_chapter: {
-        Row: {
-          created_at: string
-          device_token: string
-          enabled: boolean
-          id: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          device_token: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          device_token?: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ws_push_notifications_registry_daily_chapter_device_token_fkey"
             columns: ["device_token"]
             isOneToOne: true
             referencedRelation: "ws_push_notifications_users"
@@ -308,6 +279,7 @@ export type Database = {
           enabled: boolean
           id: string
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -315,6 +287,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -322,6 +295,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -348,6 +322,7 @@ export type Database = {
           sunrise: boolean
           sunset: boolean
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           afternoon?: boolean
@@ -363,6 +338,7 @@ export type Database = {
           sunrise?: boolean
           sunset?: boolean
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           afternoon?: boolean
@@ -378,10 +354,46 @@ export type Database = {
           sunrise?: boolean
           sunset?: boolean
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "ws_push_notifications_registry_prayer_times_device_token_fkey"
+            columns: ["device_token"]
+            isOneToOne: true
+            referencedRelation: "ws_push_notifications_users"
+            referencedColumns: ["device_token"]
+          },
+        ]
+      }
+      ws_push_notifications_registry_random_verse: {
+        Row: {
+          created_at: string
+          device_token: string
+          enabled: boolean
+          id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_token: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_token?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_push_notifications_registry_daily_chapter_device_token_fkey"
             columns: ["device_token"]
             isOneToOne: true
             referencedRelation: "ws_push_notifications_users"
@@ -410,16 +422,18 @@ export type Database = {
           is_sandbox: boolean
           platform: string
           updated_at: string | null
+          user_id: string | null
           version: string
         }
         Insert: {
-          created_at: string
+          created_at?: string
           device_token: string
           enabled?: boolean
           id?: string
           is_sandbox?: boolean
           platform: string
           updated_at?: string | null
+          user_id?: string | null
           version: string
         }
         Update: {
@@ -430,6 +444,7 @@ export type Database = {
           is_sandbox?: boolean
           platform?: string
           updated_at?: string | null
+          user_id?: string | null
           version?: string
         }
         Relationships: []
