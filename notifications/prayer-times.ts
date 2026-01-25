@@ -126,7 +126,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
                     // [Skip if > '11m' or more left, goal is 10m or under]
                     if (
                         prayerTimes.upcoming_prayer_time_left.length > 2
-                        && prayerTimes.upcoming_prayer !== '10m'
+                        && prayerTimes.upcoming_prayer !== '11m'
                     ) {
                         console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - prayer too far away (${prayerTimes.upcoming_prayer_time_left})`);
                         continue;
