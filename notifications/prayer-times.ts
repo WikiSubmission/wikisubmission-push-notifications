@@ -119,9 +119,9 @@ export class PrayerTimesNotification extends NotificationProtocol {
                             continue;
                         }
 
-                        // [Skip if notification sent within last 10m]
+                        // [Skip if notification sent within last 30m]
                         const time = existingItem.delivered_at || existingItem.created_at;
-                        if (new Date(time).getTime() > Date.now() - 1000 * 60 * 10) {
+                        if (new Date(time).getTime() > Date.now() - 1000 * 60 * 30) {
                             console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - notification recently sent`);
                             continue;
                         }
