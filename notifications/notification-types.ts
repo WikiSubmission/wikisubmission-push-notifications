@@ -3,8 +3,8 @@ import z from "zod";
 export const NotificationCategories = z.enum([
     'ANNOUNCEMENTS',
     'PRAYER_TIMES',
-    'DAILY_CHAPTER',
-    'DAILY_VERSE'
+    'DAILY_VERSE',
+    'RANDOM_VERSE'
 ]);
 export const NotificationStatuses = z.enum([
     'DELIVERY_PENDING',

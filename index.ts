@@ -1,4 +1,5 @@
 import { PrayerTimesNotification } from "./notifications/prayer-times";
+import { RandomVerseNotification } from "./notifications/random-verse";
 import { Server } from "./server";
 import dotenv from "dotenv";
 
@@ -8,5 +9,6 @@ import dotenv from "dotenv";
 
     await Server.instance.start();
 
-    const x = await new PrayerTimesNotification().start();
+    await new PrayerTimesNotification().start();
+    await new RandomVerseNotification().start();
 })();
