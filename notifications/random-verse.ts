@@ -1,6 +1,6 @@
 import z from "zod";
 import { supabaseClient, supabaseInternalClient } from "../utils/supabase-client";
-import { NotificationProtocol, QueueItem } from "./notification-protocol";
+import { NotificationProtocol } from "./notification-protocol";
 import { NotificationCategories, NotificationPayload, NotificationStatuses } from "./notification-types";
 
 export class RandomVerseNotification extends NotificationProtocol {
