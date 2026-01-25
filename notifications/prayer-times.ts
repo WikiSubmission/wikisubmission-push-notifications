@@ -207,7 +207,8 @@ export class PrayerTimesNotification extends NotificationProtocol {
                 body: `Fajr ends at ${prayerTimes.times.sunrise}`,
                 category: NotificationCategories.enum.PRAYER_TIMES,
                 deepLink: `wikisubmission://prayer-times`,
-                expirationHours: 5
+                expirationHours: 5,
+                critical: true
             }
         } else {
             return {
@@ -216,7 +217,8 @@ export class PrayerTimesNotification extends NotificationProtocol {
                 body: `${capitalized(prayerTimes.upcoming_prayer)} starts at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
                 category: NotificationCategories.enum.PRAYER_TIMES,
                 deepLink: `wikisubmission://prayer-times`,
-                expirationHours: 5
+                expirationHours: 5,
+                critical: true
             }
         }
     }
