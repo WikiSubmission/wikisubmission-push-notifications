@@ -1,5 +1,6 @@
 import { PrayerTimesNotification } from "./notifications/prayer-times";
 import { RandomVerseNotification } from "./notifications/random-verse";
+import { DailyVerseNotification } from "./notifications/daily-verse";
 import { Server } from "./server";
 import dotenv from "dotenv";
 
@@ -11,4 +12,5 @@ import dotenv from "dotenv";
 
     await new PrayerTimesNotification().start();
     await new RandomVerseNotification().start();
+    await new DailyVerseNotification().start();
 })();
