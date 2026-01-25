@@ -8,7 +8,7 @@
     "build": "npm run clean && tsc",
     "start": "npm run build && node build/index.js $*",
     "dev": "tsx watch index.ts",
-    "update-types": "npx supabase gen types --lang=typescript --project-id lbubcoodmaimkadoessn --schema internal > types/supabase.ts"
+    "update-types": "npx supabase gen types --lang=typescript --project-id lbubcoodmaimkadoessn --schema public > types/supabase.ts && npx supabase gen types --lang=typescript --project-id lbubcoodmaimkadoessn --schema internal > types/supabase-internal.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.1",

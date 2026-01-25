@@ -3,7 +3,6 @@ import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import { getFileExports } from "../utils/get-file-exports";
 import fastifyFormbody from "@fastify/formbody";
-import { supabaseClient } from "../utils/supabase-client";
 
 export class Server {
     static instance = new Server();
