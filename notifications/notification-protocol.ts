@@ -1,8 +1,8 @@
 import z from "zod";
 import { NotificationCategories, NotificationPayload, NotificationStatuses } from "./notification-types";
-import { supabaseClient } from "../utils/supabase-client";
+import { supabaseInternalClient } from "../utils/supabase-client";
 import { IOSClient } from "../utils/ios-client";
-import { Database } from "../types/supabase";
+import { Database } from "../types/supabase-internal";
 
 type QueueRow = Database['internal']['Tables']['ws_push_notifications_queue']['Row'];
 type CategoryRow = Database['internal']['Tables']['ws_push_notifications_categories']['Row'];
@@ -27,33 +27,20 @@ export abstract class NotificationProtocol {
 
     private processingQueueIds = new Set<string>();
 
-    abstract invalidateNotificationDeliveryForQueuedItem(queueItem: QueueItem): Promise<boolean>;
-
-    async processLiveQueue(intervalMinutes: number) {
+    async processLiveQueue(intervalMinutes: number, options?: {
+        timeSensitive?: {
+            maximumMinutesBeforeMarkingAsMissed: number
+        }
+    }) {
         const fn = async () => {
             const queue = await this.getQueuedItemsForCategory();
 
             for (const i of queue) {
                 // 1. [Handle pending notifications]
                 if (i.status.name === NotificationStatuses.enum.DELIVERY_PENDING) {
-                    console.log(`[NotificationProtocol] Processing queue: ${i.device_token.slice(0, 5)}... (status: ${i.status.name})`);
-
-                    // [Check if should cancel]
-                    // (e.g. user disabled notifications)
-                    if (await this.invalidateNotificationDeliveryForQueuedItem(i)) {
-                        await supabaseClient()
-                            .from("ws_push_notifications_queue")
-                            .update({
-                                updated_at: new Date().toISOString(),
-                                status: NotificationStatuses.enum.DELIVERY_CANCELLED,
-                            })
-                            .eq("id", i.id);
-                        continue;
-                    }
-
-                    // [Mark missed if 5+ minutes late]
-                    if (new Date(i.scheduled_time).getTime() < new Date().getTime() - 1000 * 60 * 5) {
-                        await supabaseClient()
+                    // [Mark missed if applicable]
+                    if (options?.timeSensitive?.maximumMinutesBeforeMarkingAsMissed && new Date(i.scheduled_time).getTime() < new Date().getTime() - 1000 * 60 * options.timeSensitive.maximumMinutesBeforeMarkingAsMissed) {
+                        await supabaseInternalClient()
                             .from("ws_push_notifications_queue")
                             .update({
                                 updated_at: new Date().toISOString(),
@@ -68,8 +55,6 @@ export abstract class NotificationProtocol {
                     // [If `scheduled_time` in less than 2 minutes, set interval now]
                     // (Or if it was slightly late (< 5 mins), treat it as "due now")
                     if (new Date(i.scheduled_time).getTime() < new Date().getTime() + 1000 * 60 * 2) {
-                        console.log(`[NotificationProtocol] Processing queue item ${i.id} - DUE NOW`);
-
                         if (this.processingQueueIds.has(i.id)) continue;
 
                         this.processingQueueIds.add(i.id);
@@ -86,7 +71,7 @@ export abstract class NotificationProtocol {
                                 console.error(`[NotificationProtocol] Error sending notification for queue item ${i.id}`, error);
 
                                 // [Mark as failed]
-                                await supabaseClient()
+                                await supabaseInternalClient()
                                     .from("ws_push_notifications_queue")
                                     .update({
                                         updated_at: new Date().toISOString(),
@@ -113,7 +98,7 @@ export abstract class NotificationProtocol {
 
     async sendNotification(queueId: string, payload: z.infer<typeof NotificationPayload>) {
         if (!payload) {
-            await supabaseClient()
+            await supabaseInternalClient()
                 .from("ws_push_notifications_queue")
                 .update({
                     updated_at: new Date().toISOString(),
@@ -128,7 +113,7 @@ export abstract class NotificationProtocol {
             await new IOSClient().send(payload);
 
             // [Mark as delivered]
-            await supabaseClient()
+            await supabaseInternalClient()
                 .from("ws_push_notifications_queue")
                 .update({
                     updated_at: new Date().toISOString(),
@@ -141,7 +126,7 @@ export abstract class NotificationProtocol {
             console.error(`[NotificationProtocol] Error sending notification for queue item ${queueId}`, error);
 
             // [Mark as failed]
-            await supabaseClient()
+            await supabaseInternalClient()
                 .from("ws_push_notifications_queue")
                 .update({
                     updated_at: new Date().toISOString(),
@@ -152,7 +137,7 @@ export abstract class NotificationProtocol {
     }
 
     async getQueuedItemsForCategory(): Promise<QueueItem[]> {
-        const { data, error } = await supabaseClient()
+        const { data, error } = await supabaseInternalClient()
             .from("ws_push_notifications_queue")
             .select("*, category: ws_push_notifications_categories(*), status: ws_push_notifications_statuses(*)")
             .order("created_at", { ascending: false });
@@ -168,7 +153,7 @@ export abstract class NotificationProtocol {
     }
 
     async getQueuedItemsInCategoryForUser(deviceToken: string): Promise<QueueItem[]> {
-        const { data, error } = await supabaseClient()
+        const { data, error } = await supabaseInternalClient()
             .from("ws_push_notifications_queue")
             .select("*, category: ws_push_notifications_categories(*), status: ws_push_notifications_statuses(*)")
             .eq("device_token", deviceToken)

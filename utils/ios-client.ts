@@ -1,6 +1,6 @@
 import { NotificationPayload } from "../notifications/notification-types";
 import { getEnv } from "./get-env";
-import { supabaseClient } from "./supabase-client";
+import { supabaseInternalClient } from "./supabase-client";
 import http2 from "http2";
 import jwt from "jsonwebtoken";
 import z from "zod";
@@ -15,7 +15,7 @@ export class IOSClient {
 
     async send(input: z.infer<typeof NotificationPayload>) {
 
-        const { data, error } = await supabaseClient()
+        const { data, error } = await supabaseInternalClient()
             .from('ws_push_notifications_users')
             .select("*")
             .eq('device_token', input.deviceToken)
@@ -47,7 +47,7 @@ export class IOSClient {
                 await this.sendToEnvironment(input, alternateEnv);
 
                 if (alternateEnv === "sandbox") {
-                    await supabaseClient()
+                    await supabaseInternalClient()
                         .from('ws_push_notifications_users')
                         .update({ is_sandbox: true })
                         .eq('device_token', input.deviceToken);
@@ -63,7 +63,7 @@ export class IOSClient {
 
                 if (shouldDeleteToken) {
                     console.log(`Invalid device token detected, removing from database...`);
-                    const { error: deleteError } = await supabaseClient()
+                    const { error: deleteError } = await supabaseInternalClient()
                         .from('ws_push_notifications_users')
                         .delete()
                         .eq('device_token', input.deviceToken);
@@ -138,7 +138,7 @@ export class IOSClient {
                         if (!isResolved) {
                             isResolved = true;
                             clearTimeout(timeout);
-                            console.log(`✓ ${input.category} notification delivery successful`);
+                            console.log(`[${input.category}] ✓ Delivery succeeded to ${input.deviceToken.slice(0, 5)}...`);
                             resolve(data ? JSON.parse(data) : {});
                         }
                     });

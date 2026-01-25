@@ -1,6 +1,6 @@
 import z from "zod";
-import { Database } from "../types/supabase";
-import { supabaseClient } from "../utils/supabase-client";
+import { Database } from "../types/supabase-internal";
+import { supabaseInternalClient } from "../utils/supabase-client";
 import { NotificationProtocol, QueueItem } from "./notification-protocol";
 import { NotificationCategories, NotificationPayload, NotificationStatuses } from "./notification-types";
 
@@ -19,6 +19,8 @@ type PrayerTimesAPIResponse = z.infer<typeof PrayerTimesAPIResponseSchema>;
 
 export class PrayerTimesNotification extends NotificationProtocol {
 
+    private groupNextCheck = new Map<string, number>();
+
     constructor() {
         super({
             category: NotificationCategories.enum.PRAYER_TIMES
@@ -26,32 +28,24 @@ export class PrayerTimesNotification extends NotificationProtocol {
     }
 
     async start() {
-        await this.processLiveQueue(0.1);
         // [Internally update queue for this category]
         await this.updateLiveQueue(0.5);
-    }
-
-    async invalidateNotificationDeliveryForQueuedItem(queueItem: QueueItem): Promise<boolean> {
-        const { data: recipient } = await supabaseClient()
-            .from("ws_push_notifications_users")
-            .select("*, prayer_times: ws_push_notifications_registry_prayer_times(*)")
-            .eq("device_token", queueItem.device_token)
-            .single();
-
-        if (!recipient) return true;
-        if (!recipient.enabled) return true;
-        if (!recipient.prayer_times) return true;
-        if (recipient.prayer_times.enabled === false) return true;
-
-        return false;
+        // [Process queue for this category]
+        await this.processLiveQueue(0.1, {
+            timeSensitive: {
+                maximumMinutesBeforeMarkingAsMissed: 5
+            }
+        });
     }
 
     private async updateLiveQueue(intervalMinutes: number) {
 
         const fn = async () => {
-            const { data: rawRecipients } = await supabaseClient()
+            const { data: rawRecipients } = await supabaseInternalClient()
                 .from("ws_push_notifications_users")
-                .select("*, prayer_times: ws_push_notifications_registry_prayer_times(*)")
+                .select("*, prayer_times_registry: ws_push_notifications_registry_prayer_times(*)")
+                .eq("enabled", true)
+                .eq("prayer_times_registry.enabled", true)
                 .order("created_at", { ascending: false });
 
             if (!rawRecipients) return;
@@ -59,8 +53,8 @@ export class PrayerTimesNotification extends NotificationProtocol {
             // Type narrowing and requirement filter
             const recipients = rawRecipients.filter(
                 (r): r is typeof r & {
-                    prayer_times: Database['internal']['Tables']['ws_push_notifications_registry_prayer_times']['Row'] & { location: string }
-                } => !!r.prayer_times?.location && !!r.prayer_times.enabled && !!r.user_id
+                    prayer_times_registry: Database['internal']['Tables']['ws_push_notifications_registry_prayer_times']['Row'] & { location: string }
+                } => !!r.prayer_times_registry?.location && !!r.prayer_times_registry.enabled && !!r.user_id
             );
 
             // Group recipients by location preferences to minimize API calls
@@ -71,11 +65,11 @@ export class PrayerTimesNotification extends NotificationProtocol {
             }>();
 
             for (const r of recipients) {
-                const key = `${r.prayer_times.location}_${!!r.prayer_times.afternoon_midpoint_method}`;
+                const key = `${r.prayer_times_registry.location}_${!!r.prayer_times_registry.afternoon_midpoint_method}`;
                 if (!groups.has(key)) {
                     groups.set(key, {
-                        location: r.prayer_times.location,
-                        asrAdjustment: !!r.prayer_times.afternoon_midpoint_method,
+                        location: r.prayer_times_registry.location,
+                        asrAdjustment: !!r.prayer_times_registry.afternoon_midpoint_method,
                         users: []
                     });
                 }
@@ -84,18 +78,36 @@ export class PrayerTimesNotification extends NotificationProtocol {
 
             var i = 1
             for (const [key, group] of groups.entries()) {
+                const now = Date.now();
+                if (this.groupNextCheck.has(key) && now < this.groupNextCheck.get(key)!) {
+                    i++;
+                    continue;
+                }
+
                 console.log(`[${this.props.category}] === ${group.location} (${i}/${groups.size}) ===`);
                 i++;
                 const prayerTimes = await this.fetchPrayerTimes(group.location, group.asrAdjustment);
                 if (!prayerTimes) continue;
 
+                // [Dynamically adjust next check time to avoid redundant API calls]
+                const minutesLeft = this.parseTimeLeft(prayerTimes.upcoming_prayer_time_left);
+                if (minutesLeft > 15) {
+                    const pushMinutes = minutesLeft - 12;
+                    console.log(`[${this.props.category}] Skipping... - next prayer (${prayerTimes.upcoming_prayer}) too far away (${prayerTimes.upcoming_prayer_time_left})`);
+                    this.groupNextCheck.set(key, now + pushMinutes * 60 * 1000);
+                    continue;
+                } else {
+                    this.groupNextCheck.delete(key);
+                }
+
                 for (const recipient of group.users) {
                     // [Skip if notification recently sent or currently pending]
-                    const { data: existingItem } = await supabaseClient()
+                    const { data: existingItem } = await supabaseInternalClient()
                         .from("ws_push_notifications_queue")
                         .select("*")
                         .eq("device_token", recipient.device_token)
                         .eq("category", NotificationCategories.enum.PRAYER_TIMES)
+                        .eq("api_triggered", false)
                         .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
                         .order("created_at", { ascending: false })
                         .limit(1)
@@ -116,17 +128,17 @@ export class PrayerTimesNotification extends NotificationProtocol {
                     }
 
                     // [Skip if prayer is disabled by user]
-                    if (prayerTimes.current_prayer === "fajr" && !recipient.prayer_times.dawn) continue;
-                    if (prayerTimes.current_prayer === "sunrise" && !recipient.prayer_times.sunrise) continue;
-                    if (prayerTimes.current_prayer === "dhuhr" && !recipient.prayer_times.noon) continue;
-                    if (prayerTimes.current_prayer === "asr" && !recipient.prayer_times.afternoon) continue;
-                    if (prayerTimes.current_prayer === "maghrib" && !recipient.prayer_times.sunset) continue;
-                    if (prayerTimes.current_prayer === "isha" && !recipient.prayer_times.night) continue;
+                    if (prayerTimes.current_prayer === "fajr" && !recipient.prayer_times_registry.dawn) continue;
+                    if (prayerTimes.current_prayer === "sunrise" && !recipient.prayer_times_registry.sunrise) continue;
+                    if (prayerTimes.current_prayer === "dhuhr" && !recipient.prayer_times_registry.noon) continue;
+                    if (prayerTimes.current_prayer === "asr" && !recipient.prayer_times_registry.afternoon) continue;
+                    if (prayerTimes.current_prayer === "maghrib" && !recipient.prayer_times_registry.sunset) continue;
+                    if (prayerTimes.current_prayer === "isha" && !recipient.prayer_times_registry.night) continue;
 
-                    // [Skip if > '11m' or more left, goal is 10m or under]
+                    // [Skip if > '10m' or more left, goal is 10m or under]
                     if (
                         prayerTimes.upcoming_prayer_time_left.length > 2
-                        && prayerTimes.upcoming_prayer !== '11m'
+                        && prayerTimes.upcoming_prayer_time_left !== '10m'
                     ) {
                         console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - prayer too far away (${prayerTimes.upcoming_prayer_time_left})`);
                         continue;
@@ -137,7 +149,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
 
                     // [Enqueue the notification with the payload]
                     // [The queue is separately processed and should trigger within a minute]
-                    const { error } = await supabaseClient()
+                    const { error } = await supabaseInternalClient()
                         .from("ws_push_notifications_queue")
                         .insert({
                             scheduled_time: new Date().toISOString(),
@@ -152,6 +164,8 @@ export class PrayerTimesNotification extends NotificationProtocol {
                     }
 
                     console.log(`[${this.props.category}] Added ${recipient.device_token.slice(0, 5)}... to queue`);
+
+                    await new Promise(resolve => setTimeout(resolve, 150));
                 }
             }
         }
@@ -205,6 +219,20 @@ export class PrayerTimesNotification extends NotificationProtocol {
                 expirationHours: 5
             }
         }
+    }
+
+    private parseTimeLeft(timeLeft: string): number {
+        let totalMinutes = 0;
+        const hourMatch = timeLeft.match(/(\d+)h/);
+        const minuteMatch = timeLeft.match(/(\d+)m/);
+        if (hourMatch) totalMinutes += parseInt(hourMatch[1]) * 60;
+        if (minuteMatch) totalMinutes += parseInt(minuteMatch[1]);
+        if (totalMinutes === 0 && timeLeft.length > 0 && !timeLeft.includes('h') && !timeLeft.includes('m')) {
+            // Check for just a raw number if applicable
+            const rawMatch = timeLeft.match(/(\d+)/);
+            if (rawMatch) totalMinutes = parseInt(rawMatch[1]);
+        }
+        return totalMinutes;
     }
 }
 

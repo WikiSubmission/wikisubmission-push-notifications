@@ -12,442 +12,621 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  internal: {
+  public: {
     Tables: {
-      ws_discord_cache: {
-        Row: {
-          created_at: string | null
-          key: string
-          value: string
-        }
-        Insert: {
-          created_at?: string | null
-          key: string
-          value: string
-        }
-        Update: {
-          created_at?: string | null
-          key?: string
-          value?: string
-        }
-        Relationships: []
-      }
-      ws_discord_constants: {
-        Row: {
-          created_at: string | null
-          key: string
-          value: string
-        }
-        Insert: {
-          created_at?: string | null
-          key: string
-          value: string
-        }
-        Update: {
-          created_at?: string | null
-          key?: string
-          value?: string
-        }
-        Relationships: []
-      }
-      ws_discord_members: {
-        Row: {
-          avatar_url: string
-          created_at: string
-          created_timestamp: number
-          display_name: string
-          guild_id: string
-          id: string
-          joined_timestamp: number
-          roles: string
-          user_id: string
-          user_name: string
-        }
-        Insert: {
-          avatar_url?: string
-          created_at?: string
-          created_timestamp: number
-          display_name: string
-          guild_id: string
-          id: string
-          joined_timestamp: number
-          roles?: string
-          user_id: string
-          user_name: string
-        }
-        Update: {
-          avatar_url?: string
-          created_at?: string
-          created_timestamp?: number
-          display_name?: string
-          guild_id?: string
-          id?: string
-          joined_timestamp?: number
-          roles?: string
-          user_id?: string
-          user_name?: string
-        }
-        Relationships: []
-      }
-      ws_discord_message_deletion_schedule: {
-        Row: {
-          channel_id: string
-          created_at: string
-          execute_at: string
-          id: number
-          is_executed: boolean
-          message_ids: string[]
-          request_by_id: string
-        }
-        Insert: {
-          channel_id: string
-          created_at?: string
-          execute_at: string
-          id?: number
-          is_executed?: boolean
-          message_ids: string[]
-          request_by_id: string
-        }
-        Update: {
-          channel_id?: string
-          created_at?: string
-          execute_at?: string
-          id?: number
-          is_executed?: boolean
-          message_ids?: string[]
-          request_by_id?: string
-        }
-        Relationships: []
-      }
-      ws_notifications_ios: {
-        Row: {
-          announcement_last_delivery_at: string | null
-          announcement_notifications: boolean | null
-          created_at: string
-          daily_chapter_last_delivery_at: string | null
-          daily_chapter_notifications: boolean | null
-          daily_verse_last_delivery_at: string | null
-          daily_verse_notifications: boolean | null
-          device_token: string
-          is_sandbox: boolean
-          last_delivery_at: string | null
-          prayer_times_last_delivery_at: string | null
-          prayer_times_notifications: Json
-          updated_at: string | null
-        }
-        Insert: {
-          announcement_last_delivery_at?: string | null
-          announcement_notifications?: boolean | null
-          created_at?: string
-          daily_chapter_last_delivery_at?: string | null
-          daily_chapter_notifications?: boolean | null
-          daily_verse_last_delivery_at?: string | null
-          daily_verse_notifications?: boolean | null
-          device_token: string
-          is_sandbox?: boolean
-          last_delivery_at?: string | null
-          prayer_times_last_delivery_at?: string | null
-          prayer_times_notifications?: Json
-          updated_at?: string | null
-        }
-        Update: {
-          announcement_last_delivery_at?: string | null
-          announcement_notifications?: boolean | null
-          created_at?: string
-          daily_chapter_last_delivery_at?: string | null
-          daily_chapter_notifications?: boolean | null
-          daily_verse_last_delivery_at?: string | null
-          daily_verse_notifications?: boolean | null
-          device_token?: string
-          is_sandbox?: boolean
-          last_delivery_at?: string | null
-          prayer_times_last_delivery_at?: string | null
-          prayer_times_notifications?: Json
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      ws_push_notifications_categories: {
-        Row: {
-          name: string
-        }
-        Insert: {
-          name: string
-        }
-        Update: {
-          name?: string
-        }
-        Relationships: []
-      }
-      ws_push_notifications_queue: {
+      ws_media: {
         Row: {
           category: string
-          created_at: string
-          delivered_at: string | null
-          device_token: string
-          id: string
-          payload: Json
-          scheduled_time: string
-          status: string
-          updated_at: string | null
+          end_timestamp: string
+          index: number
+          start_timestamp: string
+          title: string
+          transcript: string
+          youtube_id: string
+          youtube_timestamp: string
         }
         Insert: {
           category: string
-          created_at?: string
-          delivered_at?: string | null
-          device_token: string
-          id?: string
-          payload?: Json
-          scheduled_time: string
-          status: string
-          updated_at?: string | null
+          end_timestamp: string
+          index?: number
+          start_timestamp: string
+          title: string
+          transcript: string
+          youtube_id: string
+          youtube_timestamp: string
         }
         Update: {
           category?: string
-          created_at?: string
-          delivered_at?: string | null
-          device_token?: string
+          end_timestamp?: string
+          index?: number
+          start_timestamp?: string
+          title?: string
+          transcript?: string
+          youtube_id?: string
+          youtube_timestamp?: string
+        }
+        Relationships: []
+      }
+      ws_music_albums: {
+        Row: {
+          artist: string
+          description: string | null
+          id: string
+          name: string
+          release_date: string
+        }
+        Insert: {
+          artist: string
+          description?: string | null
           id?: string
-          payload?: Json
-          scheduled_time?: string
-          status?: string
-          updated_at?: string | null
+          name: string
+          release_date?: string
+        }
+        Update: {
+          artist?: string
+          description?: string | null
+          id?: string
+          name?: string
+          release_date?: string
         }
         Relationships: [
           {
-            foreignKeyName: "ws_push_notifications_queue_category_fkey"
-            columns: ["category"]
+            foreignKeyName: "ws_music_albums_artist_fkey"
+            columns: ["artist"]
             isOneToOne: false
-            referencedRelation: "ws_push_notifications_categories"
-            referencedColumns: ["name"]
-          },
-          {
-            foreignKeyName: "ws_push_notifications_queue_device_token_fkey"
-            columns: ["device_token"]
-            isOneToOne: false
-            referencedRelation: "ws_push_notifications_users"
-            referencedColumns: ["device_token"]
-          },
-          {
-            foreignKeyName: "ws_push_notifications_queue_status_fkey"
-            columns: ["status"]
-            isOneToOne: false
-            referencedRelation: "ws_push_notifications_statuses"
-            referencedColumns: ["name"]
+            referencedRelation: "ws_music_artists"
+            referencedColumns: ["id"]
           },
         ]
       }
-      ws_push_notifications_registry_announcements: {
+      ws_music_artists: {
         Row: {
-          created_at: string
-          device_token: string
-          enabled: boolean
+          description: string | null
+          display_priority: number
           id: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          device_token: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          device_token?: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ws_push_notifications_registry_announcements_device_token_fkey"
-            columns: ["device_token"]
-            isOneToOne: true
-            referencedRelation: "ws_push_notifications_users"
-            referencedColumns: ["device_token"]
-          },
-        ]
-      }
-      ws_push_notifications_registry_daily_verse: {
-        Row: {
-          created_at: string
-          device_token: string
-          enabled: boolean
-          id: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          device_token: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          device_token?: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ws_push_notifications_registry_daily_verse_device_token_fkey"
-            columns: ["device_token"]
-            isOneToOne: true
-            referencedRelation: "ws_push_notifications_users"
-            referencedColumns: ["device_token"]
-          },
-        ]
-      }
-      ws_push_notifications_registry_prayer_times: {
-        Row: {
-          afternoon: boolean
-          afternoon_midpoint_method: boolean
-          created_at: string
-          dawn: boolean
-          device_token: string
-          enabled: boolean
-          id: string
-          location: string | null
-          night: boolean
-          noon: boolean
-          sunrise: boolean
-          sunset: boolean
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          afternoon?: boolean
-          afternoon_midpoint_method?: boolean
-          created_at?: string
-          dawn?: boolean
-          device_token: string
-          enabled?: boolean
-          id?: string
-          location?: string | null
-          night?: boolean
-          noon?: boolean
-          sunrise?: boolean
-          sunset?: boolean
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          afternoon?: boolean
-          afternoon_midpoint_method?: boolean
-          created_at?: string
-          dawn?: boolean
-          device_token?: string
-          enabled?: boolean
-          id?: string
-          location?: string | null
-          night?: boolean
-          noon?: boolean
-          sunrise?: boolean
-          sunset?: boolean
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ws_push_notifications_registry_prayer_times_device_token_fkey"
-            columns: ["device_token"]
-            isOneToOne: true
-            referencedRelation: "ws_push_notifications_users"
-            referencedColumns: ["device_token"]
-          },
-        ]
-      }
-      ws_push_notifications_registry_random_verse: {
-        Row: {
-          created_at: string
-          device_token: string
-          enabled: boolean
-          id: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          device_token: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          device_token?: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ws_push_notifications_registry_daily_chapter_device_token_fkey"
-            columns: ["device_token"]
-            isOneToOne: true
-            referencedRelation: "ws_push_notifications_users"
-            referencedColumns: ["device_token"]
-          },
-        ]
-      }
-      ws_push_notifications_statuses: {
-        Row: {
+          image_url: string
           name: string
         }
         Insert: {
+          description?: string | null
+          display_priority?: number
+          id?: string
+          image_url?: string
           name: string
         }
         Update: {
+          description?: string | null
+          display_priority?: number
+          id?: string
+          image_url?: string
           name?: string
         }
         Relationships: []
       }
-      ws_push_notifications_users: {
+      ws_music_categories: {
         Row: {
-          created_at: string
-          device_token: string
-          enabled: boolean
+          description: string | null
+          display_priority: number
           id: string
-          is_sandbox: boolean
-          platform: string
-          updated_at: string | null
-          user_id: string | null
-          version: string
+          name: string
         }
         Insert: {
-          created_at?: string
-          device_token: string
-          enabled?: boolean
+          description?: string | null
+          display_priority?: number
           id?: string
-          is_sandbox?: boolean
-          platform: string
-          updated_at?: string | null
-          user_id?: string | null
-          version: string
+          name: string
         }
         Update: {
-          created_at?: string
-          device_token?: string
-          enabled?: boolean
+          description?: string | null
+          display_priority?: number
           id?: string
-          is_sandbox?: boolean
-          platform?: string
-          updated_at?: string | null
-          user_id?: string | null
-          version?: string
+          name?: string
         }
         Relationships: []
+      }
+      ws_music_tracks: {
+        Row: {
+          album: string | null
+          artist: string
+          category: string
+          featured: boolean
+          id: string
+          lyrics: string | null
+          name: string
+          release_date: string
+          url: string
+        }
+        Insert: {
+          album?: string | null
+          artist: string
+          category: string
+          featured?: boolean
+          id?: string
+          lyrics?: string | null
+          name: string
+          release_date?: string
+          url: string
+        }
+        Update: {
+          album?: string | null
+          artist?: string
+          category?: string
+          featured?: boolean
+          id?: string
+          lyrics?: string | null
+          name?: string
+          release_date?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_music_tracks_album_fkey"
+            columns: ["album"]
+            isOneToOne: false
+            referencedRelation: "ws_music_albums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ws_music_tracks_artist_fkey"
+            columns: ["artist"]
+            isOneToOne: false
+            referencedRelation: "ws_music_artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ws_music_tracks_category_fkey"
+            columns: ["category"]
+            isOneToOne: false
+            referencedRelation: "ws_music_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ws_newsletters: {
+        Row: {
+          content: string | null
+          html_tag: string
+          index: number
+          month: string
+          page: number
+          year: number
+        }
+        Insert: {
+          content?: string | null
+          html_tag: string
+          index?: number
+          month: string
+          page: number
+          year: number
+        }
+        Update: {
+          content?: string | null
+          html_tag?: string
+          index?: number
+          month?: string
+          page?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      ws_quran_appendices: {
+        Row: {
+          appendix_number: number
+          appendix_preview_text: string
+          appendix_title: string
+        }
+        Insert: {
+          appendix_number: number
+          appendix_preview_text: string
+          appendix_title: string
+        }
+        Update: {
+          appendix_number?: number
+          appendix_preview_text?: string
+          appendix_title?: string
+        }
+        Relationships: []
+      }
+      ws_quran_chapters: {
+        Row: {
+          chapter_number: number
+          chapter_verses: number
+          revelation_order: number
+          title_arabic: string
+          title_bahasa: string
+          title_bengali: string
+          title_english: string
+          title_french: string
+          title_german: string
+          title_persian: string
+          title_russian: string
+          title_spanish: string
+          title_swedish: string
+          title_tamil: string
+          title_transliterated: string
+          title_turkish: string
+          title_urdu: string
+        }
+        Insert: {
+          chapter_number: number
+          chapter_verses: number
+          revelation_order: number
+          title_arabic: string
+          title_bahasa: string
+          title_bengali: string
+          title_english: string
+          title_french: string
+          title_german: string
+          title_persian: string
+          title_russian: string
+          title_spanish?: string
+          title_swedish: string
+          title_tamil: string
+          title_transliterated: string
+          title_turkish: string
+          title_urdu?: string
+        }
+        Update: {
+          chapter_number?: number
+          chapter_verses?: number
+          revelation_order?: number
+          title_arabic?: string
+          title_bahasa?: string
+          title_bengali?: string
+          title_english?: string
+          title_french?: string
+          title_german?: string
+          title_persian?: string
+          title_russian?: string
+          title_spanish?: string
+          title_swedish?: string
+          title_tamil?: string
+          title_transliterated?: string
+          title_turkish?: string
+          title_urdu?: string
+        }
+        Relationships: []
+      }
+      ws_quran_footnotes: {
+        Row: {
+          bahasa: string
+          bengali: string
+          chapter_number: number
+          english: string
+          french: string
+          german: string
+          persian: string
+          russian: string
+          spanish: string
+          swedish: string
+          tamil: string
+          turkish: string
+          urdu: string
+          verse_id: string
+          verse_index: number
+          verse_number: number
+        }
+        Insert: {
+          bahasa: string
+          bengali: string
+          chapter_number: number
+          english: string
+          french: string
+          german: string
+          persian: string
+          russian: string
+          spanish: string
+          swedish: string
+          tamil: string
+          turkish: string
+          urdu: string
+          verse_id: string
+          verse_index?: number
+          verse_number: number
+        }
+        Update: {
+          bahasa?: string
+          bengali?: string
+          chapter_number?: number
+          english?: string
+          french?: string
+          german?: string
+          persian?: string
+          russian?: string
+          spanish?: string
+          swedish?: string
+          tamil?: string
+          turkish?: string
+          urdu?: string
+          verse_id?: string
+          verse_index?: number
+          verse_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws-quran-footnotes_chapter_number_fkey"
+            columns: ["chapter_number"]
+            isOneToOne: false
+            referencedRelation: "ws_quran_chapters"
+            referencedColumns: ["chapter_number"]
+          },
+          {
+            foreignKeyName: "ws-quran-footnotes_verse_id_fkey"
+            columns: ["verse_id"]
+            isOneToOne: true
+            referencedRelation: "ws_quran_index"
+            referencedColumns: ["verse_id"]
+          },
+          {
+            foreignKeyName: "ws-quran-footnotes_verse_id_fkey1"
+            columns: ["verse_id"]
+            isOneToOne: true
+            referencedRelation: "ws_quran_text"
+            referencedColumns: ["verse_id"]
+          },
+        ]
+      }
+      ws_quran_index: {
+        Row: {
+          chapter_number: number
+          chapter_verses: number
+          verse_id: string
+          verse_id_arabic: string
+          verse_index: number
+          verse_number: number
+        }
+        Insert: {
+          chapter_number: number
+          chapter_verses: number
+          verse_id: string
+          verse_id_arabic: string
+          verse_index?: number
+          verse_number: number
+        }
+        Update: {
+          chapter_number?: number
+          chapter_verses?: number
+          verse_id?: string
+          verse_id_arabic?: string
+          verse_index?: number
+          verse_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws-quran_chapter_number_fkey"
+            columns: ["chapter_number"]
+            isOneToOne: false
+            referencedRelation: "ws_quran_chapters"
+            referencedColumns: ["chapter_number"]
+          },
+        ]
+      }
+      ws_quran_subtitles: {
+        Row: {
+          bahasa: string
+          bengali: string
+          chapter_number: number
+          english: string
+          french: string
+          german: string
+          persian: string
+          russian: string
+          spanish: string
+          swedish: string
+          tamil: string
+          turkish: string
+          urdu: string
+          verse_id: string
+          verse_index: number
+          verse_number: number
+        }
+        Insert: {
+          bahasa: string
+          bengali: string
+          chapter_number: number
+          english: string
+          french: string
+          german: string
+          persian: string
+          russian: string
+          spanish: string
+          swedish: string
+          tamil: string
+          turkish: string
+          urdu: string
+          verse_id: string
+          verse_index?: number
+          verse_number: number
+        }
+        Update: {
+          bahasa?: string
+          bengali?: string
+          chapter_number?: number
+          english?: string
+          french?: string
+          german?: string
+          persian?: string
+          russian?: string
+          spanish?: string
+          swedish?: string
+          tamil?: string
+          turkish?: string
+          urdu?: string
+          verse_id?: string
+          verse_index?: number
+          verse_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws-quran-subtitles_chapter_number_fkey"
+            columns: ["chapter_number"]
+            isOneToOne: false
+            referencedRelation: "ws_quran_chapters"
+            referencedColumns: ["chapter_number"]
+          },
+          {
+            foreignKeyName: "ws-quran-subtitles_verse_id_fkey"
+            columns: ["verse_id"]
+            isOneToOne: true
+            referencedRelation: "ws_quran_index"
+            referencedColumns: ["verse_id"]
+          },
+          {
+            foreignKeyName: "ws-quran-subtitles_verse_id_fkey1"
+            columns: ["verse_id"]
+            isOneToOne: true
+            referencedRelation: "ws_quran_text"
+            referencedColumns: ["verse_id"]
+          },
+        ]
+      }
+      ws_quran_text: {
+        Row: {
+          arabic: string
+          arabic_clean: string
+          bahasa: string
+          bengali: string
+          chapter_number: number
+          english: string
+          french: string
+          german: string
+          persian: string
+          persian_new: string
+          russian: string
+          spanish: string
+          swedish: string
+          tamil: string
+          transliterated: string
+          turkish: string
+          urdu: string
+          verse_id: string
+          verse_index: number
+          verse_number: number
+        }
+        Insert: {
+          arabic: string
+          arabic_clean: string
+          bahasa: string
+          bengali: string
+          chapter_number: number
+          english: string
+          french: string
+          german: string
+          persian: string
+          persian_new: string
+          russian: string
+          spanish?: string
+          swedish: string
+          tamil: string
+          transliterated: string
+          turkish: string
+          urdu: string
+          verse_id: string
+          verse_index?: number
+          verse_number: number
+        }
+        Update: {
+          arabic?: string
+          arabic_clean?: string
+          bahasa?: string
+          bengali?: string
+          chapter_number?: number
+          english?: string
+          french?: string
+          german?: string
+          persian?: string
+          persian_new?: string
+          russian?: string
+          spanish?: string
+          swedish?: string
+          tamil?: string
+          transliterated?: string
+          turkish?: string
+          urdu?: string
+          verse_id?: string
+          verse_index?: number
+          verse_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws-quran-text_chapter_number_fkey"
+            columns: ["chapter_number"]
+            isOneToOne: false
+            referencedRelation: "ws_quran_chapters"
+            referencedColumns: ["chapter_number"]
+          },
+          {
+            foreignKeyName: "ws-quran-text_verse_id_fkey"
+            columns: ["verse_id"]
+            isOneToOne: true
+            referencedRelation: "ws_quran_index"
+            referencedColumns: ["verse_id"]
+          },
+        ]
+      }
+      ws_quran_word_by_word: {
+        Row: {
+          arabic: string
+          chapter_number: number
+          english: string
+          index: number
+          meanings: string | null
+          root_word: string
+          transliterated: string
+          verse_id: string
+          verse_index: number
+          verse_number: number
+          word_index: number
+        }
+        Insert: {
+          arabic: string
+          chapter_number?: number
+          english: string
+          index?: number
+          meanings?: string | null
+          root_word: string
+          transliterated: string
+          verse_id: string
+          verse_index: number
+          verse_number?: number
+          word_index: number
+        }
+        Update: {
+          arabic?: string
+          chapter_number?: number
+          english?: string
+          index?: number
+          meanings?: string | null
+          root_word?: string
+          transliterated?: string
+          verse_id?: string
+          verse_index?: number
+          verse_number?: number
+          word_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws-quran-word-by-word_chapter_number_fkey"
+            columns: ["chapter_number"]
+            isOneToOne: false
+            referencedRelation: "ws_quran_chapters"
+            referencedColumns: ["chapter_number"]
+          },
+          {
+            foreignKeyName: "ws-quran-word-by-word_verse_id_fkey"
+            columns: ["verse_id"]
+            isOneToOne: false
+            referencedRelation: "ws_quran_index"
+            referencedColumns: ["verse_id"]
+          },
+          {
+            foreignKeyName: "ws-quran-word-by-word_verse_id_fkey1"
+            columns: ["verse_id"]
+            isOneToOne: false
+            referencedRelation: "ws_quran_text"
+            referencedColumns: ["verse_id"]
+          },
+        ]
       }
     }
     Views: {
@@ -583,7 +762,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  internal: {
+  public: {
     Enums: {},
   },
 } as const
