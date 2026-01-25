@@ -87,8 +87,6 @@ export class RandomVerseNotification extends NotificationProtocol {
             }
         }
 
-        await fn();
-
         setInterval(async () => {
             await fn();
         }, 1000 * 60 * intervalMinutes);
