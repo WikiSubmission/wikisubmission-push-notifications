@@ -111,7 +111,17 @@ export class Server {
                 return;
             }
 
+            // [AVOID DEVICE TOKENS MIGRATED TO NEW DATABASE]
+            const { data: newDb } = await getSupabaseInternalClient()
+                .from("ws_push_notifications_users")
+                .select("*");
+
             for (const notification of data) {
+
+                if (newDb?.some(user => user.device_token === notification.device_token)) {
+                    continue;
+                }
+
                 // Ensure user has not disabled prayer times
                 if (notification.prayer_times_notifications) {
                     const { enabled } = notification.prayer_times_notifications as { enabled: boolean };
@@ -138,7 +148,7 @@ export class Server {
                         } catch (fetchError) {
                             this.error(`Network error sending prayer times notification: ${fetchError}`);
                         }
-                        
+
                         // Small delay between notifications to avoid overwhelming connections
                         await new Promise(resolve => setTimeout(resolve, 250));
                     }
@@ -154,12 +164,22 @@ export class Server {
                 .from('ws_notifications_ios')
                 .select('*');
 
+            // [AVOID DEVICE TOKENS MIGRATED TO NEW DATABASE]
+            const { data: newDb } = await getSupabaseInternalClient()
+                .from("ws_push_notifications_users")
+                .select("*");
+
             if (error) {
                 this.error(`Error getting notifications`);
                 return;
             }
 
             for (const notification of data) {
+
+                if (newDb?.some(user => user.device_token === notification.device_token)) {
+                    continue;
+                }
+
                 // Ensure daily verses are enabled
                 if (notification.daily_verse_notifications) {
                     try {
@@ -202,7 +222,17 @@ export class Server {
                 return;
             }
 
+            // [AVOID DEVICE TOKENS MIGRATED TO NEW DATABASE]
+            const { data: newDb } = await getSupabaseInternalClient()
+                .from("ws_push_notifications_users")
+                .select("*");
+
             for (const notification of data) {
+
+                if (newDb?.some(user => user.device_token === notification.device_token)) {
+                    continue;
+                }
+
                 // Ensure daily chapters are enabled
                 if (notification.daily_chapter_notifications) {
                     try {
