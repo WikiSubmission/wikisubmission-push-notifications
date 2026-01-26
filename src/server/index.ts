@@ -119,6 +119,7 @@ export class Server {
             for (const notification of data) {
 
                 if (newDb?.some(user => user.device_token === notification.device_token)) {
+                    console.log(`Skipping ${notification.device_token.slice(0, 5)}... (migrated)`);
                     continue;
                 }
 
@@ -139,11 +140,8 @@ export class Server {
                                 }
                             });
 
-                            if (!response.ok) {
-                                try {
-                                    console.log(await response.json());
-                                } catch { }
-                                this.error(`Error sending prayer times notification`);
+                            if (response.ok) {
+                                console.log(`Sent prayer times notification to ${notification.device_token.slice(0, 5)}...`);
                             }
                         } catch (fetchError) {
                             this.error(`Network error sending prayer times notification: ${fetchError}`);
