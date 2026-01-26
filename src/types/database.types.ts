@@ -121,6 +121,8 @@ export type Database = {
       }
       ws_notifications_ios: {
         Row: {
+          announcement_last_delivery_at: string | null
+          announcement_notifications: boolean | null
           created_at: string
           daily_chapter_last_delivery_at: string | null
           daily_chapter_notifications: boolean | null
@@ -134,6 +136,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          announcement_last_delivery_at?: string | null
+          announcement_notifications?: boolean | null
           created_at?: string
           daily_chapter_last_delivery_at?: string | null
           daily_chapter_notifications?: boolean | null
@@ -147,6 +151,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          announcement_last_delivery_at?: string | null
+          announcement_notifications?: boolean | null
           created_at?: string
           daily_chapter_last_delivery_at?: string | null
           daily_chapter_notifications?: boolean | null
@@ -158,6 +164,291 @@ export type Database = {
           prayer_times_last_delivery_at?: string | null
           prayer_times_notifications?: Json
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ws_push_notifications_categories: {
+        Row: {
+          name: string
+        }
+        Insert: {
+          name: string
+        }
+        Update: {
+          name?: string
+        }
+        Relationships: []
+      }
+      ws_push_notifications_queue: {
+        Row: {
+          api_triggered: boolean
+          category: string
+          created_at: string
+          delivered_at: string | null
+          device_token: string
+          id: string
+          payload: Json
+          scheduled_time: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_triggered?: boolean
+          category: string
+          created_at?: string
+          delivered_at?: string | null
+          device_token: string
+          id?: string
+          payload?: Json
+          scheduled_time: string
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_triggered?: boolean
+          category?: string
+          created_at?: string
+          delivered_at?: string | null
+          device_token?: string
+          id?: string
+          payload?: Json
+          scheduled_time?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_push_notifications_queue_category_fkey"
+            columns: ["category"]
+            isOneToOne: false
+            referencedRelation: "ws_push_notifications_categories"
+            referencedColumns: ["name"]
+          },
+          {
+            foreignKeyName: "ws_push_notifications_queue_device_token_fkey"
+            columns: ["device_token"]
+            isOneToOne: false
+            referencedRelation: "ws_push_notifications_users"
+            referencedColumns: ["device_token"]
+          },
+          {
+            foreignKeyName: "ws_push_notifications_queue_status_fkey"
+            columns: ["status"]
+            isOneToOne: false
+            referencedRelation: "ws_push_notifications_statuses"
+            referencedColumns: ["name"]
+          },
+        ]
+      }
+      ws_push_notifications_registry_announcements: {
+        Row: {
+          created_at: string
+          device_token: string
+          enabled: boolean
+          id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_token: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_token?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_push_notifications_registry_announcements_device_token_fkey"
+            columns: ["device_token"]
+            isOneToOne: true
+            referencedRelation: "ws_push_notifications_users"
+            referencedColumns: ["device_token"]
+          },
+        ]
+      }
+      ws_push_notifications_registry_daily_verse: {
+        Row: {
+          created_at: string
+          device_token: string
+          enabled: boolean
+          id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_token: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_token?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_push_notifications_registry_daily_verse_device_token_fkey"
+            columns: ["device_token"]
+            isOneToOne: true
+            referencedRelation: "ws_push_notifications_users"
+            referencedColumns: ["device_token"]
+          },
+        ]
+      }
+      ws_push_notifications_registry_prayer_times: {
+        Row: {
+          afternoon: boolean
+          afternoon_midpoint_method: boolean
+          created_at: string
+          dawn: boolean
+          device_token: string
+          enabled: boolean
+          id: string
+          location: string | null
+          night: boolean
+          noon: boolean
+          sunrise: boolean
+          sunset: boolean
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          afternoon?: boolean
+          afternoon_midpoint_method?: boolean
+          created_at?: string
+          dawn?: boolean
+          device_token: string
+          enabled?: boolean
+          id?: string
+          location?: string | null
+          night?: boolean
+          noon?: boolean
+          sunrise?: boolean
+          sunset?: boolean
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          afternoon?: boolean
+          afternoon_midpoint_method?: boolean
+          created_at?: string
+          dawn?: boolean
+          device_token?: string
+          enabled?: boolean
+          id?: string
+          location?: string | null
+          night?: boolean
+          noon?: boolean
+          sunrise?: boolean
+          sunset?: boolean
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_push_notifications_registry_prayer_times_device_token_fkey"
+            columns: ["device_token"]
+            isOneToOne: true
+            referencedRelation: "ws_push_notifications_users"
+            referencedColumns: ["device_token"]
+          },
+        ]
+      }
+      ws_push_notifications_registry_random_verse: {
+        Row: {
+          created_at: string
+          device_token: string
+          enabled: boolean
+          id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_token: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_token?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_push_notifications_registry_daily_chapter_device_token_fkey"
+            columns: ["device_token"]
+            isOneToOne: true
+            referencedRelation: "ws_push_notifications_users"
+            referencedColumns: ["device_token"]
+          },
+        ]
+      }
+      ws_push_notifications_statuses: {
+        Row: {
+          name: string
+        }
+        Insert: {
+          name: string
+        }
+        Update: {
+          name?: string
+        }
+        Relationships: []
+      }
+      ws_push_notifications_users: {
+        Row: {
+          created_at: string
+          device_token: string
+          enabled: boolean
+          id: string
+          is_sandbox: boolean
+          platform: string
+          updated_at: string | null
+          user_id: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          device_token: string
+          enabled?: boolean
+          id?: string
+          is_sandbox?: boolean
+          platform: string
+          updated_at?: string | null
+          user_id?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string
+          device_token?: string
+          enabled?: boolean
+          id?: string
+          is_sandbox?: boolean
+          platform?: string
+          updated_at?: string | null
+          user_id?: string | null
+          version?: string
         }
         Relationships: []
       }
