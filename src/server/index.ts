@@ -112,19 +112,21 @@ export class Server {
             }
 
             // [AVOID DEVICE TOKENS MIGRATED TO NEW DATABASE]
+            // [EDIT: 2026-01-28 - CHECK FOR REGISTRY ALSO (PERSIST OTHERWISE)]
             const { data: newDb } = await getSupabaseInternalClient()
                 .from("ws_push_notifications_users")
-                .select("*");
+                .select("*, prayer_times_registry: ws_push_notifications_registry_prayer_times(*)");
 
             for (const notification of data) {
 
-                if (newDb?.some(user => user.device_token === notification.device_token)) {
+                if (newDb?.some(user => user.device_token === notification.device_token && user.prayer_times_registry?.enabled)) {
                     console.log(`Skipping ${notification.device_token.slice(0, 5)}... (migrated)`);
                     continue;
                 }
 
                 // Ensure user has not disabled prayer times
                 if (notification.prayer_times_notifications) {
+
                     const { enabled } = notification.prayer_times_notifications as { enabled: boolean };
                     if (enabled !== false) {
                         try {
