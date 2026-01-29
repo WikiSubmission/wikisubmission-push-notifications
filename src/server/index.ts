@@ -119,7 +119,7 @@ export class Server {
 
             for (const notification of data) {
 
-                if (newDb?.some(user => user.device_token === notification.device_token && user.prayer_times_registry?.enabled)) {
+                if (newDb?.some(user => user.device_token === notification.device_token && user.prayer_times_registry != null)) {
                     console.log(`Skipping ${notification.device_token.slice(0, 5)}... (migrated)`);
                     continue;
                 }
