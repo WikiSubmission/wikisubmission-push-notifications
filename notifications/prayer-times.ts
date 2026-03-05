@@ -41,162 +41,185 @@ export class PrayerTimesNotification extends NotificationProtocol {
     private async updateLiveQueue(intervalMinutes: number) {
 
         const fn = async () => {
-            const { data: rawRecipients } = await supabaseInternalClient()
-                .from("ws_push_notifications_users")
-                .select("*, prayer_times_registry: ws_push_notifications_registry_prayer_times(*)")
-                .eq("enabled", true)
-                .eq("prayer_times_registry.enabled", true)
-                .order("created_at", { ascending: false });
+            try {
+                const { data: rawRecipients, error: recipientsError } = await supabaseInternalClient()
+                    .from("ws_push_notifications_users")
+                    .select("*, prayer_times_registry: ws_push_notifications_registry_prayer_times(*)")
+                    .eq("enabled", true)
+                    .eq("prayer_times_registry.enabled", true)
+                    .order("created_at", { ascending: false });
 
-            if (!rawRecipients) return;
-
-            // Type narrowing and requirement filter
-            const recipients = rawRecipients.filter(
-                (r): r is typeof r & {
-                    prayer_times_registry: Database['internal']['Tables']['ws_push_notifications_registry_prayer_times']['Row'] & { location: string }
-                } => !!r.prayer_times_registry?.location && !!r.prayer_times_registry.enabled && !!r.user_id
-            );
-
-            // Group recipients by location preferences to minimize API calls
-            const groups = new Map<string, {
-                location: string,
-                asrAdjustment: boolean,
-                users: typeof recipients
-            }>();
-
-            for (const r of recipients) {
-                const key = `${r.prayer_times_registry.location}_${!!r.prayer_times_registry.afternoon_midpoint_method}`;
-                if (!groups.has(key)) {
-                    groups.set(key, {
-                        location: r.prayer_times_registry.location,
-                        asrAdjustment: !!r.prayer_times_registry.afternoon_midpoint_method,
-                        users: []
-                    });
-                }
-                groups.get(key)!.users.push(r);
-            }
-
-            var i = 1
-            for (const [key, group] of groups.entries()) {
-                const now = Date.now();
-                if (this.groupNextCheck.has(key) && now < this.groupNextCheck.get(key)!) {
-                    i++;
-                    continue;
+                if (recipientsError) {
+                    console.error(`[${this.props.category}] Error fetching recipients:`, recipientsError);
+                    return;
                 }
 
-                console.log(`[${this.props.category}] === ${group.location} (${i}/${groups.size}) ===`);
-                i++;
-                const prayerTimes = await this.fetchPrayerTimes(group.location, group.asrAdjustment);
-                if (!prayerTimes) continue;
+                if (!rawRecipients) return;
 
-                // [Dynamically adjust next check time to avoid redundant API calls]
-                const minutesLeft = this.parseTimeLeft(prayerTimes.upcoming_prayer_time_left);
-                if (minutesLeft > 15) {
-                    const pushMinutes = minutesLeft - 12;
-                    console.log(`[${this.props.category}] Skipping... - next prayer (${prayerTimes.upcoming_prayer}) too far away (${prayerTimes.upcoming_prayer_time_left})`);
-                    this.groupNextCheck.set(key, now + pushMinutes * 60 * 1000);
-                    continue;
-                } else {
-                    this.groupNextCheck.delete(key);
-                }
+                // Type narrowing and requirement filter
+                const recipients = rawRecipients.filter(
+                    (r): r is typeof r & {
+                        prayer_times_registry: Database['internal']['Tables']['ws_push_notifications_registry_prayer_times']['Row'] & { location: string }
+                    } => !!r.prayer_times_registry?.location && !!r.prayer_times_registry.enabled && !!r.user_id
+                );
 
-                for (const recipient of group.users) {
-                    // [Skip if notification recently sent or currently pending]
-                    const { data: existingItem } = await supabaseInternalClient()
-                        .from("ws_push_notifications_queue")
-                        .select("*")
-                        .eq("device_token", recipient.device_token)
-                        .eq("category", NotificationCategories.enum.PRAYER_TIMES)
-                        .eq("api_triggered", false)
-                        .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
-                        .order("created_at", { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
+                // Group recipients by location preferences to minimize API calls
+                const groups = new Map<string, {
+                    location: string,
+                    asrAdjustment: boolean,
+                    users: typeof recipients
+                }>();
 
-                    if (existingItem) {
-                        if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
-                            console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - already pending`);
-                            continue;
-                        }
-
-                        // [Skip if notification sent within last 30m]
-                        const time = existingItem.delivered_at || existingItem.created_at;
-                        if (new Date(time).getTime() > Date.now() - 1000 * 60 * 30) {
-                            console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - notification recently sent`);
-                            continue;
-                        }
+                for (const r of recipients) {
+                    const key = `${r.prayer_times_registry.location}_${!!r.prayer_times_registry.afternoon_midpoint_method}`;
+                    if (!groups.has(key)) {
+                        groups.set(key, {
+                            location: r.prayer_times_registry.location,
+                            asrAdjustment: !!r.prayer_times_registry.afternoon_midpoint_method,
+                            users: []
+                        });
                     }
+                    groups.get(key)!.users.push(r);
+                }
 
-                    // [Skip if prayer is disabled by user]
-                    if (prayerTimes.current_prayer === "fajr" && !recipient.prayer_times_registry.dawn) continue;
-                    if (prayerTimes.current_prayer === "sunrise" && !recipient.prayer_times_registry.sunrise) continue;
-                    if (prayerTimes.current_prayer === "dhuhr" && !recipient.prayer_times_registry.noon) continue;
-                    if (prayerTimes.current_prayer === "asr" && !recipient.prayer_times_registry.afternoon) continue;
-                    if (prayerTimes.current_prayer === "maghrib" && !recipient.prayer_times_registry.sunset) continue;
-                    if (prayerTimes.current_prayer === "isha" && !recipient.prayer_times_registry.night) continue;
-
-                    // [Skip if > '10m' or more left, goal is 10m or under]
-                    if (
-                        prayerTimes.upcoming_prayer_time_left.length > 2
-                        && prayerTimes.upcoming_prayer_time_left !== '10m'
-                    ) {
-                        console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - prayer too far away (${prayerTimes.upcoming_prayer_time_left})`);
+                var i = 1
+                for (const [key, group] of groups.entries()) {
+                    const now = Date.now();
+                    if (this.groupNextCheck.has(key) && now < this.groupNextCheck.get(key)!) {
+                        i++;
                         continue;
                     }
 
-                    // [Looking good, generate payload]
-                    const payload = this.generateNotificationPayload(recipient.device_token, prayerTimes);
+                    console.log(`[${this.props.category}] === ${group.location} (${i}/${groups.size}) ===`);
+                    i++;
+                    const prayerTimes = await this.fetchPrayerTimes(group.location, group.asrAdjustment);
+                    if (!prayerTimes) continue;
 
-                    // [Enqueue the notification with the payload]
-                    // [The queue is separately processed and should trigger within a minute]
-                    const { error } = await supabaseInternalClient()
-                        .from("ws_push_notifications_queue")
-                        .insert({
-                            scheduled_time: new Date().toISOString(),
-                            device_token: recipient.device_token,
-                            status: NotificationStatuses.enum.DELIVERY_PENDING,
-                            category: NotificationCategories.enum.PRAYER_TIMES,
-                            payload: payload as any
-                        });
-
-                    if (error) {
-                        console.error(`[${this.props.category}] Error adding to queue for ${recipient.device_token}:`, error);
+                    // [Dynamically adjust next check time to avoid redundant API calls]
+                    const minutesLeft = this.parseTimeLeft(prayerTimes.upcoming_prayer_time_left);
+                    if (minutesLeft > 15) {
+                        const pushMinutes = minutesLeft - 12;
+                        console.log(`[${this.props.category}] Skipping... - next prayer (${prayerTimes.upcoming_prayer}) too far away (${prayerTimes.upcoming_prayer_time_left})`);
+                        this.groupNextCheck.set(key, now + pushMinutes * 60 * 1000);
+                        continue;
+                    } else {
+                        this.groupNextCheck.delete(key);
                     }
 
-                    console.log(`[${this.props.category}] Added ${recipient.device_token.slice(0, 5)}... to queue`);
+                    for (const recipient of group.users) {
+                        try {
+                            // [Skip if notification recently sent or currently pending]
+                            const { data: existingItem, error: existingItemError } = await supabaseInternalClient()
+                                .from("ws_push_notifications_queue")
+                                .select("*")
+                                .eq("device_token", recipient.device_token)
+                                .eq("category", NotificationCategories.enum.PRAYER_TIMES)
+                                .eq("api_triggered", false)
+                                .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
+                                .order("created_at", { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
 
-                    await new Promise(resolve => setTimeout(resolve, 150));
+                            if (existingItemError) {
+                                console.error(`[${this.props.category}] Error checking existing items for ${recipient.device_token}:`, existingItemError);
+                            }
+
+                            if (existingItem) {
+                                if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
+                                    console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - already pending`);
+                                    continue;
+                                }
+
+                                // [Skip if notification sent within last 30m]
+                                const time = existingItem.delivered_at || existingItem.created_at;
+                                if (new Date(time).getTime() > Date.now() - 1000 * 60 * 30) {
+                                    console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - notification recently sent`);
+                                    continue;
+                                }
+                            }
+
+                            // [Skip if prayer is disabled by user]
+                            if (prayerTimes.current_prayer === "fajr" && !recipient.prayer_times_registry.dawn) continue;
+                            if (prayerTimes.current_prayer === "sunrise" && !recipient.prayer_times_registry.sunrise) continue;
+                            if (prayerTimes.current_prayer === "dhuhr" && !recipient.prayer_times_registry.noon) continue;
+                            if (prayerTimes.current_prayer === "asr" && !recipient.prayer_times_registry.afternoon) continue;
+                            if (prayerTimes.current_prayer === "maghrib" && !recipient.prayer_times_registry.sunset) continue;
+                            if (prayerTimes.current_prayer === "isha" && !recipient.prayer_times_registry.night) continue;
+
+                            // [Skip if > '10m' or more left, goal is 10m or under]
+                            if (
+                                prayerTimes.upcoming_prayer_time_left.length > 2
+                                && prayerTimes.upcoming_prayer_time_left !== '10m'
+                            ) {
+                                console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - prayer too far away (${prayerTimes.upcoming_prayer_time_left})`);
+                                continue;
+                            }
+
+                            // [Looking good, generate payload]
+                            const payload = this.generateNotificationPayload(recipient.device_token, prayerTimes);
+
+                            // [Enqueue the notification with the payload]
+                            // [The queue is separately processed and should trigger within a minute]
+                            const { error: insertError } = await supabaseInternalClient()
+                                .from("ws_push_notifications_queue")
+                                .insert({
+                                    scheduled_time: new Date().toISOString(),
+                                    device_token: recipient.device_token,
+                                    status: NotificationStatuses.enum.DELIVERY_PENDING,
+                                    category: NotificationCategories.enum.PRAYER_TIMES,
+                                    payload: payload as any
+                                });
+
+                            if (insertError) {
+                                console.error(`[${this.props.category}] Error adding to queue for ${recipient.device_token}:`, insertError);
+                            } else {
+                                console.log(`[${this.props.category}] Added ${recipient.device_token.slice(0, 5)}... to queue`);
+                            }
+
+                            await new Promise(resolve => setTimeout(resolve, 150));
+                        } catch (err) {
+                            console.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token}:`, err);
+                        }
+                    }
                 }
+            } catch (error) {
+                console.error(`[${this.props.category}] Error in updateLiveQueue:`, error);
             }
         }
 
-        await fn();
-
-        setInterval(async () => {
+        const run = async () => {
             await fn();
-        }, 1000 * 60 * intervalMinutes);
+            setTimeout(run, 1000 * 60 * intervalMinutes);
+        }
+
+        await run();
     }
 
     async fetchPrayerTimes(location: string, asrAdjustment: boolean) {
-        // [Construct fetch URL]
-        const fetchURL = new URL("https://practices.wikisubmission.org/prayer-times/");
-        fetchURL.searchParams.set("q", location);
-        if (asrAdjustment) {
-            fetchURL.searchParams.set("asr_adjustment", "true");
-        }
+        try {
+            // [Construct fetch URL]
+            const fetchURL = new URL("https://practices.wikisubmission.org/prayer-times/");
+            fetchURL.searchParams.set("q", location);
+            if (asrAdjustment) {
+                fetchURL.searchParams.set("asr_adjustment", "true");
+            }
 
-        // [Fetch times]
-        const response = await fetch(fetchURL.toString());
+            // [Fetch times]
+            const response = await fetch(fetchURL.toString());
 
-        if (!response.ok || response.status !== 200) {
-            console.error(`[${this.props.category}] Error fetching times for ${location}`);
+            if (!response.ok || response.status !== 200) {
+                console.error(`[${this.props.category}] Error fetching times for ${location}: ${response.statusText}`);
+                return;
+            }
+
+            const rawJson = await response.json();
+            const prayerTimes = PrayerTimesAPIResponseSchema.parse(rawJson);
+
+            return prayerTimes;
+        } catch (error) {
+            console.error(`[${this.props.category}] Critical error fetching prayer times for ${location}:`, error);
             return;
         }
-
-        const rawJson = await response.json();
-        const prayerTimes = PrayerTimesAPIResponseSchema.parse(rawJson);
-
-        return prayerTimes;
     }
 
     generateNotificationPayload(deviceToken: string, prayerTimes: PrayerTimesAPIResponse): z.infer<typeof NotificationPayload> {
