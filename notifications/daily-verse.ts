@@ -24,7 +24,7 @@ export class DailyVerseNotification extends NotificationProtocol {
                 const { data: recipients, error: recipientsError } = await supabaseInternalClient()
                     .schema("internal")
                     .from("ws_push_notifications_users")
-                    .select("*, daily_verse_registry: ws_push_notifications_registry_daily_verse(*)")
+                    .select("device_token, daily_verse_registry: ws_push_notifications_registry_daily_verse(enabled)")
                     .eq("enabled", true)
                     .eq("daily_verse_registry.enabled", true)
                     .order("created_at", { ascending: false });

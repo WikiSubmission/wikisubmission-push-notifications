@@ -24,7 +24,7 @@ export class RandomVerseNotification extends NotificationProtocol {
                 const { data: recipients, error: recipientsError } = await supabaseInternalClient()
                     .schema("internal")
                     .from("ws_push_notifications_users")
-                    .select("*, random_verse_registry: ws_push_notifications_registry_random_verse(*)")
+                    .select("device_token, random_verse_registry: ws_push_notifications_registry_random_verse(enabled)")
                     .eq("enabled", true)
                     .eq("random_verse_registry.enabled", true)
                     .order("created_at", { ascending: false });

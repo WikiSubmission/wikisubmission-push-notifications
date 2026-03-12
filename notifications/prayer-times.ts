@@ -44,7 +44,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
             try {
                 const { data: rawRecipients, error: recipientsError } = await supabaseInternalClient()
                     .from("ws_push_notifications_users")
-                    .select("*, prayer_times_registry: ws_push_notifications_registry_prayer_times(*)")
+                    .select("device_token, user_id, prayer_times_registry: ws_push_notifications_registry_prayer_times(enabled, location, afternoon_midpoint_method, dawn, sunrise, noon, afternoon, sunset, night)")
                     .eq("enabled", true)
                     .eq("prayer_times_registry.enabled", true)
                     .order("created_at", { ascending: false });
