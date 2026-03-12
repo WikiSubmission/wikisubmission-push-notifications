@@ -106,23 +106,31 @@ export class PrayerTimesNotification extends NotificationProtocol {
                         this.groupNextCheck.delete(key);
                     }
 
+                    // [Batch-fetch recent queue items for all users in this group]
+                    const groupDeviceTokens = group.users.map(u => u.device_token);
+                    const { data: batchExisting, error: batchError } = await supabaseInternalClient()
+                        .from("ws_push_notifications_queue")
+                        .select("device_token, status, delivered_at, created_at")
+                        .in("device_token", groupDeviceTokens)
+                        .eq("category", NotificationCategories.enum.PRAYER_TIMES)
+                        .eq("api_triggered", false)
+                        .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
+                        .order("created_at", { ascending: false });
+
+                    if (batchError) {
+                        console.error(`[${this.props.category}] Error batch-fetching queue items:`, batchError);
+                    }
+
+                    const recentQueueByToken = new Map<string, NonNullable<typeof batchExisting>[0]>();
+                    for (const item of batchExisting ?? []) {
+                        if (!recentQueueByToken.has(item.device_token)) {
+                            recentQueueByToken.set(item.device_token, item);
+                        }
+                    }
+
                     for (const recipient of group.users) {
                         try {
-                            // [Skip if notification recently sent or currently pending]
-                            const { data: existingItem, error: existingItemError } = await supabaseInternalClient()
-                                .from("ws_push_notifications_queue")
-                                .select("*")
-                                .eq("device_token", recipient.device_token)
-                                .eq("category", NotificationCategories.enum.PRAYER_TIMES)
-                                .eq("api_triggered", false)
-                                .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
-                                .order("created_at", { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-
-                            if (existingItemError) {
-                                console.error(`[${this.props.category}] Error checking existing items for ${recipient.device_token}:`, existingItemError);
-                            }
+                            const existingItem = recentQueueByToken.get(recipient.device_token);
 
                             if (existingItem) {
                                 if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
