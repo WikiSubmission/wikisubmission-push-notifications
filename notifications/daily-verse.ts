@@ -129,7 +129,7 @@ export class DailyVerseNotification extends NotificationProtocol {
 
             const { data, error } = await supabaseClient()
                 .from("ws_quran_index")
-                .select("*, chapter:ws_quran_chapters(*), text:ws_quran_text(*)")
+                .select("verse_id, chapter:ws_quran_chapters(chapter_number, title_english), text:ws_quran_text(english)")
                 .eq("chapter_number", randomChapter)
                 .order("verse_number", { ascending: false });
 
