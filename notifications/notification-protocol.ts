@@ -150,6 +150,8 @@ export abstract class NotificationProtocol {
             const { data, error } = await supabaseInternalClient()
                 .from("ws_push_notifications_queue")
                 .select("*, category: ws_push_notifications_categories(*), status: ws_push_notifications_statuses(*)")
+                .eq("category", this.props.category)
+                .eq("status", NotificationStatuses.enum.DELIVERY_PENDING)
                 .order("created_at", { ascending: false });
 
             if (error) {
@@ -157,9 +159,7 @@ export abstract class NotificationProtocol {
                 return [];
             }
 
-            return (data as unknown as QueueItem[])?.filter(
-                i => i.category.name === this.props.category
-            ) || [];
+            return (data as unknown as QueueItem[]) || [];
         } catch (error) {
             console.error(`[${this.props.category}] Critical error getting queue items:`, error);
             return [];
