@@ -43,7 +43,7 @@ export class DailyVerseNotification extends NotificationProtocol {
                         // [Skip if notification recently sent or currently pending]
                         const { data: existingItem, error: existingItemError } = await supabaseInternalClient()
                             .from("ws_push_notifications_queue")
-                            .select("*")
+                            .select("status, delivered_at, created_at")
                             .eq("device_token", recipient.device_token)
                             .eq("category", NotificationCategories.enum.DAILY_VERSE)
                             .eq("api_triggered", false)
