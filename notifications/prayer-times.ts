@@ -31,7 +31,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
         // [Internally update queue for this category]
         await this.updateLiveQueue(0.5);
         // [Process queue for this category]
-        await this.processLiveQueue(0.1, {
+        await this.processLiveQueue(1, {
             timeSensitive: {
                 maximumMinutesBeforeMarkingAsMissed: 5
             }

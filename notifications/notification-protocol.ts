@@ -37,59 +37,56 @@ export abstract class NotificationProtocol {
                 const queue = await this.getQueuedItemsForCategory();
 
                 for (const i of queue) {
-                    // 1. [Handle pending notifications]
-                    if (i.status.name === NotificationStatuses.enum.DELIVERY_PENDING) {
-                        // [Mark missed if applicable]
-                        if (options?.timeSensitive?.maximumMinutesBeforeMarkingAsMissed && new Date(i.scheduled_time).getTime() < new Date().getTime() - 1000 * 60 * options.timeSensitive.maximumMinutesBeforeMarkingAsMissed) {
-                            await supabaseInternalClient()
-                                .from("ws_push_notifications_queue")
-                                .update({
-                                    updated_at: new Date().toISOString(),
-                                    status: NotificationStatuses.enum.DELIVERY_MISSED,
-                                })
-                                .eq("id", i.id);
+                    // [Mark missed if applicable]
+                    if (options?.timeSensitive?.maximumMinutesBeforeMarkingAsMissed && new Date(i.scheduled_time).getTime() < new Date().getTime() - 1000 * 60 * options.timeSensitive.maximumMinutesBeforeMarkingAsMissed) {
+                        await supabaseInternalClient()
+                            .from("ws_push_notifications_queue")
+                            .update({
+                                updated_at: new Date().toISOString(),
+                                status: NotificationStatuses.enum.DELIVERY_MISSED,
+                            })
+                            .eq("id", i.id);
 
-                            // [Move on to next queue item]
-                            continue;
-                        }
+                        // [Move on to next queue item]
+                        continue;
+                    }
 
-                        // [If `scheduled_time` in less than 2 minutes, set interval now]
-                        // (Or if it was slightly late (< 5 mins), treat it as "due now")
-                        if (new Date(i.scheduled_time).getTime() < new Date().getTime() + 1000 * 60 * 2) {
-                            if (this.processingQueueIds.has(i.id)) continue;
+                    // [If `scheduled_time` in less than 2 minutes, set interval now]
+                    // (Or if it was slightly late (< 5 mins), treat it as "due now")
+                    if (new Date(i.scheduled_time).getTime() < new Date().getTime() + 1000 * 60 * 2) {
+                        if (this.processingQueueIds.has(i.id)) continue;
 
-                            this.processingQueueIds.add(i.id);
+                        this.processingQueueIds.add(i.id);
 
-                            // Send notification at the `scheduled_time`
-                            setTimeout(async () => {
-                                // [Send notification]
+                        // Send notification at the `scheduled_time`
+                        setTimeout(async () => {
+                            // [Send notification]
+                            try {
+                                await this.sendNotification(
+                                    i.id,
+                                    JSON.parse(JSON.stringify(i.payload)) as z.infer<typeof NotificationPayload>
+                                );
+                            } catch (error) {
+                                console.error(`[NotificationProtocol] Error sending notification for queue item ${i.id}`, error);
+
+                                // [Mark as failed]
                                 try {
-                                    await this.sendNotification(
-                                        i.id,
-                                        JSON.parse(JSON.stringify(i.payload)) as z.infer<typeof NotificationPayload>
-                                    );
-                                } catch (error) {
-                                    console.error(`[NotificationProtocol] Error sending notification for queue item ${i.id}`, error);
-
-                                    // [Mark as failed]
-                                    try {
-                                        await supabaseInternalClient()
-                                            .from("ws_push_notifications_queue")
-                                            .update({
-                                                updated_at: new Date().toISOString(),
-                                                status: NotificationStatuses.enum.DELIVERY_FAILED,
-                                            })
-                                            .eq("id", i.id);
-                                    } catch (err) {
-                                        console.error(`[NotificationProtocol] Critical error marking notification as failed:`, err);
-                                    }
-                                } finally {
-                                    this.processingQueueIds.delete(i.id);
+                                    await supabaseInternalClient()
+                                        .from("ws_push_notifications_queue")
+                                        .update({
+                                            updated_at: new Date().toISOString(),
+                                            status: NotificationStatuses.enum.DELIVERY_FAILED,
+                                        })
+                                        .eq("id", i.id);
+                                } catch (err) {
+                                    console.error(`[NotificationProtocol] Critical error marking notification as failed:`, err);
                                 }
-                            },
-                                Math.max(0, new Date(i.scheduled_time).getTime() - new Date().getTime())
-                            );
-                        }
+                            } finally {
+                                this.processingQueueIds.delete(i.id);
+                            }
+                        },
+                            Math.max(0, new Date(i.scheduled_time).getTime() - new Date().getTime())
+                        );
                     }
                 }
             } catch (error) {
@@ -145,21 +142,22 @@ export abstract class NotificationProtocol {
         }
     }
 
-    async getQueuedItemsForCategory(): Promise<QueueItem[]> {
+    async getQueuedItemsForCategory(): Promise<QueueRow[]> {
         try {
             const { data, error } = await supabaseInternalClient()
                 .from("ws_push_notifications_queue")
-                .select("*, category: ws_push_notifications_categories(*), status: ws_push_notifications_statuses(*)")
+                .select("*")
                 .eq("category", this.props.category)
                 .eq("status", NotificationStatuses.enum.DELIVERY_PENDING)
-                .order("created_at", { ascending: false });
+                .order("created_at", { ascending: false })
+                .limit(50);
 
             if (error) {
                 console.error(`[${this.props.category}] Error getting queue:`, error);
                 return [];
             }
 
-            return (data as unknown as QueueItem[]) || [];
+            return data || [];
         } catch (error) {
             console.error(`[${this.props.category}] Critical error getting queue items:`, error);
             return [];
