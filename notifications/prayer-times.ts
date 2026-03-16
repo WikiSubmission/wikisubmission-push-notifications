@@ -17,9 +17,6 @@ const PrayerTimesAPIResponseSchema = z.object({
 
 type PrayerTimesAPIResponse = z.infer<typeof PrayerTimesAPIResponseSchema>;
 
-// Night of Destiny: set to false (or delete this block + usages below) to revert
-const NIGHT_OF_DESTINY = true;
-
 export class PrayerTimesNotification extends NotificationProtocol {
 
     private groupNextCheck = new Map<string, number>();
@@ -131,13 +128,6 @@ export class PrayerTimesNotification extends NotificationProtocol {
                         }
                     }
 
-                    // Night of Destiny: remove this block to revert
-                    let isNightOfDestiny = false;
-                    if (NIGHT_OF_DESTINY && prayerTimes.upcoming_prayer === 'maghrib') {
-                        isNightOfDestiny = await this.checkNightOfDestiny(group.location);
-                    }
-                    // End Night of Destiny
-
                     for (const recipient of group.users) {
                         try {
                             const existingItem = recentQueueByToken.get(recipient.device_token);
@@ -193,33 +183,6 @@ export class PrayerTimesNotification extends NotificationProtocol {
                             } else {
                                 console.log(`[${this.props.category}] Added ${recipient.device_token.slice(0, 5)}... to queue`);
                             }
-
-                            // Night of Destiny: remove this block to revert
-                            if (NIGHT_OF_DESTINY && isNightOfDestiny && !insertError) {
-                                const nodScheduledTime = new Date(Date.now() + (minutesLeft + 5) * 60 * 1000).toISOString();
-                                const { error: nodError } = await supabaseInternalClient()
-                                    .from("ws_push_notifications_queue")
-                                    .insert({
-                                        scheduled_time: nodScheduledTime,
-                                        device_token: recipient.device_token,
-                                        status: NotificationStatuses.enum.DELIVERY_PENDING,
-                                        category: NotificationCategories.enum.PRAYER_TIMES,
-                                        payload: {
-                                            deviceToken: recipient.device_token,
-                                            title: "Happy Night of Destiny! 🙂",
-                                            body: "",
-                                            category: NotificationCategories.enum.ANNOUNCEMENTS,
-                                            expirationHours: 5,
-                                            critical: true,
-                                        }
-                                    });
-                                if (nodError) {
-                                    console.error(`[${this.props.category}] Error adding Night of Destiny to queue for ${recipient.device_token.slice(0, 5)}...:`, nodError);
-                                } else {
-                                    console.log(`[${this.props.category}] Added Night of Destiny for ${recipient.device_token.slice(0, 5)}... (scheduled +${minutesLeft + 5}m)`);
-                                }
-                            }
-                            // End Night of Destiny
 
                             await new Promise(resolve => setTimeout(resolve, 150));
                         } catch (err) {
@@ -290,20 +253,6 @@ export class PrayerTimesNotification extends NotificationProtocol {
             }
         }
     }
-
-    // Night of Destiny: remove this method to revert
-    private async checkNightOfDestiny(location: string): Promise<boolean> {
-        try {
-            const response = await fetch(`https://practices.wikisubmission.org/ramadan/${encodeURIComponent(location)}`);
-            if (!response.ok) return false;
-            const data = await response.json();
-            return data?.current_day === 26;
-        } catch (error) {
-            console.error(`[${this.props.category}] Error checking Night of Destiny for ${location}:`, error);
-            return false;
-        }
-    }
-    // End Night of Destiny
 
     private parseTimeLeft(timeLeft: string): number {
         let totalMinutes = 0;
