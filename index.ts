@@ -11,8 +11,8 @@ import dotenv from "dotenv";
 
     await Server.instance.start();
 
-    // await new PrayerTimesNotification().start();
-    // await new RandomVerseNotification().start();
-    // await new DailyVerseNotification().start();
+    await new PrayerTimesNotification().start();
+    await new RandomVerseNotification().start();
+    await new DailyVerseNotification().start();
     await new AnnouncementsNotification().start();
 })();
