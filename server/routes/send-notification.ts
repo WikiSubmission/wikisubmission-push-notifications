@@ -6,7 +6,7 @@ import { supabaseInternalClient } from "../../utils/supabase-client";
 import { getEnv } from "../../utils/get-env";
 import { PrayerTimesNotification } from "../../notifications/prayer-times";
 import { RandomVerseNotification } from "../../notifications/random-verse";
-import { DailyVerseNotification } from "../../notifications/daily-verse";
+import { DailyRemindersNotification } from "../../notifications/daily-reminders";
 
 export default function route(): RouteOptions {
     return {
@@ -59,7 +59,7 @@ export default function route(): RouteOptions {
 
             const PrayerNotificationManager = new PrayerTimesNotification();
             const RandomVerseNotificationManager = new RandomVerseNotification();
-            const DailyVerseNotificationManager = new DailyVerseNotification();
+            const DailyRemindersNotificationManager = new DailyRemindersNotification();
 
             const { data: userData } = await supabaseInternalClient()
                 .from("ws_push_notifications_registry_prayer_times")
@@ -79,7 +79,11 @@ export default function route(): RouteOptions {
                         return reply.status(400).send({ success: false, message: "Failed to fetch prayer times" });
                     }
 
-                    const payload = PrayerNotificationManager.generateNotificationPayload(device_token, prayerTimes);
+                    const payload = PrayerNotificationManager.generateNotificationPayload(
+                        device_token,
+                        prayerTimes,
+                        userData.notification_sound
+                    );
 
                     if (!payload) {
                         return reply.status(400).send({ success: false, message: "Failed to generate notification payload" });
@@ -146,14 +150,10 @@ export default function route(): RouteOptions {
                     }
                 }
 
-                case NotificationCategories.enum.DAILY_VERSE: {
-                    const dailyVerse = await DailyVerseNotificationManager.fetchDailyVerse();
-
-                    if (!dailyVerse) {
-                        return reply.status(400).send({ success: false, message: "Failed to fetch daily verse" });
-                    }
-
-                    const payload = DailyVerseNotificationManager.generateNotificationPayload(device_token, dailyVerse.verseId, dailyVerse.title, dailyVerse.body);
+                case NotificationCategories.enum.DAILY_REMINDERS: {
+                    const recentReminderIds = await DailyRemindersNotificationManager.getRecentReminderIds(device_token);
+                    const reminder = DailyRemindersNotificationManager.getReminder(device_token, recentReminderIds);
+                    const payload = DailyRemindersNotificationManager.generateNotificationPayload(device_token, reminder);
 
                     if (!payload) {
                         return reply.status(400).send({ success: false, message: "Failed to generate notification payload" });
@@ -170,7 +170,7 @@ export default function route(): RouteOptions {
                                 scheduled_time: new Date().toISOString(),
                                 delivered_at: new Date().toISOString(),
                                 device_token,
-                                category: NotificationCategories.enum.DAILY_VERSE,
+                                category: NotificationCategories.enum.DAILY_REMINDERS,
                                 status: NotificationStatuses.enum.DELIVERY_SUCCEEDED,
                                 payload,
                                 api_triggered: true

@@ -44,7 +44,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
             try {
                 const { data: rawRecipients, error: recipientsError } = await supabaseInternalClient()
                     .from("ws_push_notifications_users")
-                    .select("device_token, user_id, prayer_times_registry: ws_push_notifications_registry_prayer_times(enabled, location, afternoon_midpoint_method, dawn, sunrise, noon, afternoon, sunset, night)")
+                    .select("device_token, user_id, prayer_times_registry: ws_push_notifications_registry_prayer_times(enabled, location, afternoon_midpoint_method, notification_sound, dawn, sunrise, noon, afternoon, sunset, night)")
                     .eq("enabled", true)
                     .eq("prayer_times_registry.enabled", true)
                     .order("created_at", { ascending: false });
@@ -164,7 +164,11 @@ export class PrayerTimesNotification extends NotificationProtocol {
                             }
 
                             // [Looking good, generate payload]
-                            const payload = this.generateNotificationPayload(recipient.device_token, prayerTimes);
+                            const payload = this.generateNotificationPayload(
+                                recipient.device_token,
+                                prayerTimes,
+                                recipient.prayer_times_registry.notification_sound
+                            );
 
                             // [Enqueue the notification with the payload]
                             // [The queue is separately processed and should trigger within a minute]
@@ -230,7 +234,11 @@ export class PrayerTimesNotification extends NotificationProtocol {
         }
     }
 
-    generateNotificationPayload(deviceToken: string, prayerTimes: PrayerTimesAPIResponse): z.infer<typeof NotificationPayload> {
+    generateNotificationPayload(deviceToken: string, prayerTimes: PrayerTimesAPIResponse, sound?: string | null): z.infer<typeof NotificationPayload> {
+        const resolvedSound = sound && sound !== "default"
+            ? sound
+            : undefined;
+
         if (prayerTimes.upcoming_prayer === 'sunrise') {
             return {
                 deviceToken,
@@ -239,7 +247,8 @@ export class PrayerTimesNotification extends NotificationProtocol {
                 category: NotificationCategories.enum.PRAYER_TIMES,
                 deepLink: `wikisubmission://prayer-times`,
                 expirationHours: 5,
-                critical: true
+                critical: true,
+                sound: resolvedSound
             }
         } else {
             return {
@@ -249,7 +258,8 @@ export class PrayerTimesNotification extends NotificationProtocol {
                 category: NotificationCategories.enum.PRAYER_TIMES,
                 deepLink: `wikisubmission://prayer-times`,
                 expirationHours: 5,
-                critical: true
+                critical: true,
+                sound: resolvedSound
             }
         }
     }

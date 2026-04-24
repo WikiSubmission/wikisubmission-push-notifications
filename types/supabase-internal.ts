@@ -275,6 +275,35 @@ export type Database = {
           },
         ]
       }
+      ws_push_notifications_registry_daily_reminders: {
+        Row: {
+          device_token: string
+          enabled: boolean
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          device_token: string
+          enabled?: boolean
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          device_token?: string
+          enabled?: boolean
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_push_notifications_registry_daily_reminder_device_token_fkey"
+            columns: ["device_token"]
+            isOneToOne: true
+            referencedRelation: "ws_push_notifications_users"
+            referencedColumns: ["device_token"]
+          },
+        ]
+      }
       ws_push_notifications_registry_daily_verse: {
         Row: {
           created_at: string
@@ -322,6 +351,7 @@ export type Database = {
           location: string | null
           night: boolean
           noon: boolean
+          notification_sound: string
           sunrise: boolean
           sunset: boolean
           updated_at: string | null
@@ -338,6 +368,7 @@ export type Database = {
           location?: string | null
           night?: boolean
           noon?: boolean
+          notification_sound?: string
           sunrise?: boolean
           sunset?: boolean
           updated_at?: string | null
@@ -354,6 +385,7 @@ export type Database = {
           location?: string | null
           night?: boolean
           noon?: boolean
+          notification_sound?: string
           sunrise?: boolean
           sunset?: boolean
           updated_at?: string | null
@@ -397,6 +429,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ws_push_notifications_registry_daily_chapter_device_token_fkey"
+            columns: ["device_token"]
+            isOneToOne: true
+            referencedRelation: "ws_push_notifications_users"
+            referencedColumns: ["device_token"]
+          },
+        ]
+      }
+      ws_push_notifications_registry_reminders: {
+        Row: {
+          created_at: string
+          device_token: string
+          enabled: boolean
+          id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_token: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_token?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ws_push_notifications_registry_reminders_device_token_fkey"
             columns: ["device_token"]
             isOneToOne: true
             referencedRelation: "ws_push_notifications_users"

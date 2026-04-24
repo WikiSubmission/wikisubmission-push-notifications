@@ -174,9 +174,9 @@ export class IOSClient {
                 'interruption-level': input.critical ? 'critical' : 'time-sensitive',
                 sound: input.critical ? {
                     critical: 1,
-                    name: 'default',
+                    name: input.sound ?? 'default',
                     volume: 1.0
-                } : 'default',
+                } : (input.sound ?? 'default'),
             },
             category: input.category,
             deepLink: input.deepLink,
