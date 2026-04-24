@@ -4,7 +4,7 @@ export const NotificationCategories = z.enum([
     'ANNOUNCEMENTS',
     'PRAYER_TIMES',
     'DAILY_REMINDERS',
-    'RANDOM_VERSE'
+    'DAILY_VERSE'
 ]);
 export const NotificationStatuses = z.enum([
     'DELIVERY_PENDING',

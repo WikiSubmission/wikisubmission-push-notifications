@@ -3,11 +3,11 @@ import { supabaseClient, supabaseInternalClient } from "../utils/supabase-client
 import { NotificationProtocol } from "./notification-protocol";
 import { NotificationCategories, NotificationPayload, NotificationStatuses } from "./notification-types";
 
-export class RandomVerseNotification extends NotificationProtocol {
+export class DailyVerseNotification extends NotificationProtocol {
 
     constructor() {
         super({
-            category: NotificationCategories.enum.RANDOM_VERSE
+            category: NotificationCategories.enum.DAILY_VERSE
         });
     }
 
@@ -36,7 +36,7 @@ export class RandomVerseNotification extends NotificationProtocol {
 
                 if (!recipients) return;
 
-                console.log(`[${this.props.category}] === Random Verse Queue ===`)
+                console.log(`[${this.props.category}] === Daily Verse Queue ===`)
 
                 for (const recipient of recipients) {
                     try {
@@ -45,7 +45,7 @@ export class RandomVerseNotification extends NotificationProtocol {
                             .from("ws_push_notifications_queue")
                             .select("status, delivered_at, created_at")
                             .eq("device_token", recipient.device_token)
-                            .eq("category", NotificationCategories.enum.RANDOM_VERSE)
+                            .eq("category", NotificationCategories.enum.DAILY_VERSE)
                             .eq("api_triggered", false)
                             .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
                             .order("created_at", { ascending: false })
@@ -70,13 +70,13 @@ export class RandomVerseNotification extends NotificationProtocol {
                             }
                         }
 
-                        const randomVerse = await this.fetchRandomVerse();
-                        if (!randomVerse) {
-                            console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - no random verse found`);
+                        const dailyVerse = await this.fetchDailyVerse();
+                        if (!dailyVerse) {
+                            console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - no daily verse found`);
                             continue;
                         }
 
-                        const payload = this.generateNotificationPayload(recipient.device_token, randomVerse.verseId, randomVerse.title, randomVerse.body);
+                        const payload = this.generateNotificationPayload(recipient.device_token, dailyVerse.verseId, dailyVerse.title, dailyVerse.body);
 
                         // [Enqueue the notification with the payload]
                         // [The queue is separately processed and should trigger within a minute]
@@ -86,7 +86,7 @@ export class RandomVerseNotification extends NotificationProtocol {
                                 scheduled_time: new Date().toISOString(),
                                 device_token: recipient.device_token,
                                 status: NotificationStatuses.enum.DELIVERY_PENDING,
-                                category: NotificationCategories.enum.RANDOM_VERSE,
+                                category: NotificationCategories.enum.DAILY_VERSE,
                                 payload: payload as any
                             });
 
@@ -123,7 +123,7 @@ export class RandomVerseNotification extends NotificationProtocol {
         }
     }
 
-    async fetchRandomVerse(): Promise<{ verseId: string, title: string, body: string } | null> {
+    async fetchDailyVerse(): Promise<{ verseId: string, title: string, body: string } | null> {
         try {
             const randomChapter = Math.floor(Math.random() * 114);
 
@@ -134,7 +134,7 @@ export class RandomVerseNotification extends NotificationProtocol {
                 .order("verse_number", { ascending: false });
 
             if (error) {
-                console.error(`[${this.props.category}] Error fetching random verse:`, error);
+                console.error(`[${this.props.category}] Error fetching daily verse:`, error);
                 return null;
             }
 
@@ -144,12 +144,12 @@ export class RandomVerseNotification extends NotificationProtocol {
 
                 return {
                     verseId: verse.verse_id,
-                    title: `Sura ${verse.chapter.chapter_number}, ${verse.chapter.title_english}`,
+                    title: `Daily Verse`,
                     body: `[${verse.verse_id}] ${verse.text?.english}`
                 }
             }
         } catch (error) {
-            console.error(`[${this.props.category}] Critical error fetching random verse:`, error);
+            console.error(`[${this.props.category}] Critical error fetching daily verse:`, error);
         }
 
         return null;

@@ -5,7 +5,7 @@ import { IOSClient } from "../../utils/ios-client";
 import { supabaseInternalClient } from "../../utils/supabase-client";
 import { getEnv } from "../../utils/get-env";
 import { PrayerTimesNotification } from "../../notifications/prayer-times";
-import { RandomVerseNotification } from "../../notifications/random-verse";
+import { DailyVerseNotification } from "../../notifications/daily-verse";
 import { DailyRemindersNotification } from "../../notifications/daily-reminders";
 
 export default function route(): RouteOptions {
@@ -58,7 +58,7 @@ export default function route(): RouteOptions {
             }
 
             const PrayerNotificationManager = new PrayerTimesNotification();
-            const RandomVerseNotificationManager = new RandomVerseNotification();
+            const DailyVerseNotificationManager = new DailyVerseNotification();
             const DailyRemindersNotificationManager = new DailyRemindersNotification();
 
             const { data: userData } = await supabaseInternalClient()
@@ -113,14 +113,14 @@ export default function route(): RouteOptions {
                     }
                 }
 
-                case NotificationCategories.enum.RANDOM_VERSE: {
-                    const randomVerse = await RandomVerseNotificationManager.fetchRandomVerse();
+                case NotificationCategories.enum.DAILY_VERSE: {
+                    const dailyVerse = await DailyVerseNotificationManager.fetchDailyVerse();
 
-                    if (!randomVerse) {
-                        return reply.status(400).send({ success: false, message: "Failed to fetch random verse" });
+                    if (!dailyVerse) {
+                        return reply.status(400).send({ success: false, message: "Failed to fetch daily verse" });
                     }
 
-                    const payload = RandomVerseNotificationManager.generateNotificationPayload(device_token, randomVerse.verseId, randomVerse.title, randomVerse.body);
+                    const payload = DailyVerseNotificationManager.generateNotificationPayload(device_token, dailyVerse.verseId, dailyVerse.title, dailyVerse.body);
 
                     if (!payload) {
                         return reply.status(400).send({ success: false, message: "Failed to generate notification payload" });
@@ -137,7 +137,7 @@ export default function route(): RouteOptions {
                                 scheduled_time: new Date().toISOString(),
                                 delivered_at: new Date().toISOString(),
                                 device_token,
-                                category: NotificationCategories.enum.RANDOM_VERSE,
+                                category: NotificationCategories.enum.DAILY_VERSE,
                                 status: NotificationStatuses.enum.DELIVERY_SUCCEEDED,
                                 payload,
                                 api_triggered: true
