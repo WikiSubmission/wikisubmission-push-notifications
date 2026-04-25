@@ -154,11 +154,8 @@ export class PrayerTimesNotification extends NotificationProtocol {
                             if (prayerTimes.current_prayer === "maghrib" && !recipient.prayer_times_registry.sunset) continue;
                             if (prayerTimes.current_prayer === "isha" && !recipient.prayer_times_registry.night) continue;
 
-                            // [Skip if > '10m' or more left, goal is 10m or under]
-                            if (
-                                prayerTimes.upcoming_prayer_time_left.length > 2
-                                && prayerTimes.upcoming_prayer_time_left !== '10m'
-                            ) {
+                            // [Skip if > 10 minutes left]
+                            if (this.parseTimeLeft(prayerTimes.upcoming_prayer_time_left) > 10) {
                                 console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - prayer too far away (${prayerTimes.upcoming_prayer_time_left})`);
                                 continue;
                             }

@@ -15,7 +15,11 @@ export class DailyVerseNotification extends NotificationProtocol {
         // [Internally update queue for this category]
         await this.updateLiveQueue(120);
         // [Process queue for this category]
-        await this.processLiveQueue(120);
+        await this.processLiveQueue(120, {
+            timeSensitive: {
+                maximumMinutesBeforeMarkingAsMissed: 4 * 60
+            }
+        });
     }
 
     async updateLiveQueue(intervalMinutes: number) {
@@ -38,23 +42,33 @@ export class DailyVerseNotification extends NotificationProtocol {
 
                 console.log(`[${this.props.category}] === Daily Verse Queue ===`)
 
+                // [Batch-fetch recent queue items for all recipients]
+                const allTokens = recipients.map(r => r.device_token);
+                const since48h = new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString();
+                const { data: batchExisting, error: batchError } = await supabaseInternalClient()
+                    .from("ws_push_notifications_queue")
+                    .select("device_token, status, delivered_at, created_at")
+                    .in("device_token", allTokens)
+                    .eq("category", NotificationCategories.enum.DAILY_VERSE)
+                    .eq("api_triggered", false)
+                    .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
+                    .gte("created_at", since48h)
+                    .order("created_at", { ascending: false });
+
+                if (batchError) {
+                    console.error(`[${this.props.category}] Error batch-fetching queue items:`, batchError);
+                }
+
+                const recentQueueByToken = new Map<string, NonNullable<typeof batchExisting>[0]>();
+                for (const item of batchExisting ?? []) {
+                    if (!recentQueueByToken.has(item.device_token)) {
+                        recentQueueByToken.set(item.device_token, item);
+                    }
+                }
+
                 for (const recipient of recipients) {
                     try {
-                        // [Skip if notification recently sent or currently pending]
-                        const { data: existingItem, error: existingItemError } = await supabaseInternalClient()
-                            .from("ws_push_notifications_queue")
-                            .select("status, delivered_at, created_at")
-                            .eq("device_token", recipient.device_token)
-                            .eq("category", NotificationCategories.enum.DAILY_VERSE)
-                            .eq("api_triggered", false)
-                            .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
-                            .order("created_at", { ascending: false })
-                            .limit(1)
-                            .maybeSingle();
-
-                        if (existingItemError) {
-                            console.error(`[${this.props.category}] Error checking existing items for ${recipient.device_token}:`, existingItemError);
-                        }
+                        const existingItem = recentQueueByToken.get(recipient.device_token);
 
                         if (existingItem) {
                             if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
@@ -125,7 +139,7 @@ export class DailyVerseNotification extends NotificationProtocol {
 
     async fetchDailyVerse(): Promise<{ verseId: string, title: string, body: string } | null> {
         try {
-            const randomChapter = Math.floor(Math.random() * 114);
+            const randomChapter = Math.floor(Math.random() * 114) + 1;
 
             const { data, error } = await supabaseClient()
                 .from("ws_quran_index")

@@ -149,7 +149,7 @@ export abstract class NotificationProtocol {
                 .select("*")
                 .eq("category", this.props.category)
                 .eq("status", NotificationStatuses.enum.DELIVERY_PENDING)
-                .order("created_at", { ascending: false })
+                .order("created_at", { ascending: true })
                 .limit(50);
 
             if (error) {

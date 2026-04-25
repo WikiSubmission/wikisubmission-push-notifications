@@ -7,11 +7,11 @@ import z from "zod";
 
 export class IOSClient {
 
-    private client: http2.ClientHttp2Session | null = null;
+    private static clients: Partial<Record<'production' | 'sandbox', http2.ClientHttp2Session>> = {};
+    private static cachedToken = '';
+    private static tokenCreatedAt = 0;
+
     private primaryEnv: 'production' | 'sandbox' = getEnv('APNS_ENV') === 'production' ? 'production' : 'sandbox';
-    private currentEnv: 'production' | 'sandbox' = this.primaryEnv;
-    private token = this.createApnsJwt();
-    private tokenCreatedAt = Date.now();
 
     async send(input: z.infer<typeof NotificationPayload>) {
 
@@ -26,21 +26,17 @@ export class IOSClient {
             return;
         }
 
-        if (data.is_sandbox) {
-            this.currentEnv = 'sandbox';
-        } else {
-            this.currentEnv = 'production';
-        }
+        const env: 'production' | 'sandbox' = data.is_sandbox ? 'sandbox' : 'production';
 
-        // Try current environment first
+        // Try primary environment first
         try {
-            await this.sendToEnvironment(input, this.currentEnv);
+            await this.sendToEnvironment(input, env);
             return;
         } catch (error: any) {
-            console.error(`Failed to send via ${this.currentEnv}:`, error.message);
+            console.error(`Failed to send via ${env}:`, error.message);
 
             // Try alternate environment
-            const alternateEnv: 'production' | 'sandbox' = this.primaryEnv === 'production' ? 'sandbox' : 'production';
+            const alternateEnv: 'production' | 'sandbox' = env === 'production' ? 'sandbox' : 'production';
             console.log(`Retrying with ${alternateEnv} APNS...`);
 
             try {
@@ -91,14 +87,14 @@ export class IOSClient {
                 client = this.getClient(env);
             } catch (err: any) {
                 // Force reconnection on next attempt
-                this.client = null;
+                delete IOSClient.clients[env];
                 reject(new Error(`Failed to get HTTP/2 client: ${err.message}`));
                 return;
             }
 
             // Check if client is still usable
             if (client.destroyed || client.closed) {
-                this.client = null;
+                delete IOSClient.clients[env];
                 reject(new Error('HTTP/2 client is not available, will reconnect on next request'));
                 return;
             }
@@ -151,7 +147,7 @@ export class IOSClient {
                     clearTimeout(timeout);
                     // Force client reconnection on connection errors
                     if (err.message.includes('ECONNRESET') || err.message.includes('GOAWAY') || err.message.includes('socket hang up')) {
-                        this.client = null;
+                        delete IOSClient.clients[env];
                     }
                     reject(new Error(`APNS request error: ${err.message}`));
                 }
@@ -196,42 +192,36 @@ export class IOSClient {
     private getToken(): string {
         // JWT tokens expire after 1 hour, refresh if older than 50 minutes
         const fiftyMinutesInMs = 50 * 60 * 1000;
-        if (Date.now() - this.tokenCreatedAt > fiftyMinutesInMs) {
+        if (!IOSClient.cachedToken || Date.now() - IOSClient.tokenCreatedAt > fiftyMinutesInMs) {
             console.log('Refreshing expired APNS JWT token...');
-            this.token = this.createApnsJwt();
-            this.tokenCreatedAt = Date.now();
+            IOSClient.cachedToken = this.createApnsJwt();
+            IOSClient.tokenCreatedAt = Date.now();
         }
-        return this.token;
+        return IOSClient.cachedToken;
     }
 
     private getClient(env: 'production' | 'sandbox'): http2.ClientHttp2Session {
-        if (!this.client || this.client.destroyed || this.client.closed || this.currentEnv !== env) {
-            if (this.client && !this.client.destroyed) {
-                try {
-                    this.client.close();
-                } catch { }
+        const existing = IOSClient.clients[env];
+        if (!existing || existing.destroyed || existing.closed) {
+            if (existing && !existing.destroyed) {
+                try { existing.close(); } catch { }
             }
-            this.currentEnv = env;
-            this.client = http2.connect(this.getBaseURL(env));
+            const client = http2.connect(this.getBaseURL(env));
 
-            // Handle connection errors gracefully
-            this.client.on('error', (err) => {
+            client.on('error', (err) => {
                 console.error(`HTTP/2 connection error (${env}):`, err.message);
-                // Force reconnection on next request
-                if (this.client) {
-                    try {
-                        this.client.close();
-                    } catch { }
-                    this.client = null;
-                }
+                try { IOSClient.clients[env]?.close(); } catch { }
+                delete IOSClient.clients[env];
             });
 
-            // Handle connection close
-            this.client.on('close', () => {
-                this.client = null;
+            client.on('close', () => {
+                delete IOSClient.clients[env];
             });
+
+            IOSClient.clients[env] = client;
+            return client;
         }
-        return this.client;
+        return existing;
     }
 
     private generateHeaders(expirationHours: number, deviceToken: string): http2.OutgoingHttpHeaders {

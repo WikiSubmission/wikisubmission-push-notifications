@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance, RouteOptions } from "fastify";
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
+import fastifyRateLimit from "@fastify/rate-limit";
 import { getFileExports } from "../utils/get-file-exports";
 import fastifyFormbody from "@fastify/formbody";
 
@@ -95,6 +96,12 @@ export class Server {
 
         // [Body Parser - Parse JSON bodies]
         this.server.register(fastifyFormbody);
+
+        // [Rate Limiting - 60 requests per minute per IP]
+        this.server.register(fastifyRateLimit, {
+            max: 60,
+            timeWindow: '1 minute',
+        });
     }
 
     log(message: any) {

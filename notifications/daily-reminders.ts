@@ -118,7 +118,11 @@ export class DailyRemindersNotification extends NotificationProtocol {
 
     async start() {
         await this.updateLiveQueue(240);
-        await this.processLiveQueue(300);
+        await this.processLiveQueue(300, {
+            timeSensitive: {
+                maximumMinutesBeforeMarkingAsMissed: 8 * 60
+            }
+        });
     }
 
     async updateLiveQueue(intervalMinutes: number) {
@@ -145,22 +149,33 @@ export class DailyRemindersNotification extends NotificationProtocol {
 
                 console.log(`[${this.props.category}] === Daily Reminders Queue ===`);
 
+                // [Batch-fetch recent queue items for all eligible recipients]
+                const allTokens = eligibleRecipients.map(r => r.device_token);
+                const since24h = new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString();
+                const { data: batchExisting, error: batchError } = await supabaseInternalClient()
+                    .from("ws_push_notifications_queue")
+                    .select("device_token, status, delivered_at, created_at")
+                    .in("device_token", allTokens)
+                    .eq("category", NotificationCategories.enum.DAILY_REMINDERS)
+                    .eq("api_triggered", false)
+                    .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
+                    .gte("created_at", since24h)
+                    .order("created_at", { ascending: false });
+
+                if (batchError) {
+                    console.error(`[${this.props.category}] Error batch-fetching queue items:`, batchError);
+                }
+
+                const recentQueueByToken = new Map<string, NonNullable<typeof batchExisting>[0]>();
+                for (const item of batchExisting ?? []) {
+                    if (!recentQueueByToken.has(item.device_token)) {
+                        recentQueueByToken.set(item.device_token, item);
+                    }
+                }
+
                 for (const recipient of eligibleRecipients) {
                     try {
-                        const { data: existingItem, error: existingItemError } = await supabaseInternalClient()
-                            .from("ws_push_notifications_queue")
-                            .select("status, delivered_at, created_at")
-                            .eq("device_token", recipient.device_token)
-                            .eq("category", NotificationCategories.enum.DAILY_REMINDERS)
-                            .eq("api_triggered", false)
-                            .in("status", [NotificationStatuses.enum.DELIVERY_PENDING, NotificationStatuses.enum.DELIVERY_SUCCEEDED])
-                            .order("created_at", { ascending: false })
-                            .limit(1)
-                            .maybeSingle();
-
-                        if (existingItemError) {
-                            console.error(`[${this.props.category}] Error checking existing items for ${recipient.device_token}:`, existingItemError);
-                        }
+                        const existingItem = recentQueueByToken.get(recipient.device_token);
 
                         if (existingItem) {
                             if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
