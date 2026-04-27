@@ -121,7 +121,8 @@ export class DailyRemindersNotification extends NotificationProtocol {
         await this.processLiveQueue(300, {
             timeSensitive: {
                 maximumMinutesBeforeMarkingAsMissed: 8 * 60
-            }
+            },
+            orderOldestFirst: true
         });
     }
 

@@ -18,7 +18,8 @@ export class DailyVerseNotification extends NotificationProtocol {
         await this.processLiveQueue(120, {
             timeSensitive: {
                 maximumMinutesBeforeMarkingAsMissed: 4 * 60
-            }
+            },
+            orderOldestFirst: true
         });
     }
 

@@ -30,11 +30,12 @@ export abstract class NotificationProtocol {
     async processLiveQueue(intervalMinutes: number, options?: {
         timeSensitive?: {
             maximumMinutesBeforeMarkingAsMissed: number
-        }
+        },
+        orderOldestFirst?: boolean
     }) {
         const fn = async () => {
             try {
-                const queue = await this.getQueuedItemsForCategory();
+                const queue = await this.getQueuedItemsForCategory(options?.orderOldestFirst);
 
                 for (const i of queue) {
                     // [Mark missed if applicable]
@@ -142,14 +143,14 @@ export abstract class NotificationProtocol {
         }
     }
 
-    async getQueuedItemsForCategory(): Promise<QueueRow[]> {
+    async getQueuedItemsForCategory(orderOldestFirst?: boolean): Promise<QueueRow[]> {
         try {
             const { data, error } = await supabaseInternalClient()
                 .from("ws_push_notifications_queue")
                 .select("*")
                 .eq("category", this.props.category)
                 .eq("status", NotificationStatuses.enum.DELIVERY_PENDING)
-                .order("created_at", { ascending: true })
+                .order("created_at", { ascending: orderOldestFirst ?? false })
                 .limit(50);
 
             if (error) {
