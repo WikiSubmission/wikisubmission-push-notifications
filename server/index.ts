@@ -4,6 +4,7 @@ import fastifyHelmet from "@fastify/helmet";
 import fastifyRateLimit from "@fastify/rate-limit";
 import { getFileExports } from "../utils/get-file-exports";
 import fastifyFormbody from "@fastify/formbody";
+import { logger } from "../utils/logger";
 
 export class Server {
     static instance = new Server();
@@ -58,10 +59,11 @@ export class Server {
 
     // [Start]
     async start() {
-        this.server.log.info(`=== Starting ===`);
+        logger.info(`[Server] Starting on port ${this.port}`);
         this.registerPlugins();
         await this.registerRoutes();
         await this.server.listen({ port: this.port, host: "0.0.0.0" });
+        logger.info(`[Server] Listening on port ${this.port}`);
     }
 
     // [Stop]
@@ -73,15 +75,15 @@ export class Server {
     async registerRoutes() {
         const routes = await getFileExports<RouteOptions>("/server/routes");
         if (routes.length === 0) {
-            this.server.log.warn(`No routes found`);
+            logger.warn(`[Server] No routes found`);
             return;
         }
-        this.server.log.info(`${routes.length} routes: ${routes.map(r => `${r.url}`).join(", ")}`);
+        logger.info(`[Server] ${routes.length} route(s): ${routes.map(r => r.url).join(", ")}`);
         for (const route of routes) {
             try {
                 this.server.route(route);
             } catch (error) {
-                this.server.log.error(`Error registering route ${route.url}: ${error}`);
+                logger.error(`[Server] Failed to register route ${route.url}`, error);
             }
         }
     }
@@ -105,15 +107,15 @@ export class Server {
     }
 
     log(message: any) {
-        this.server.log.info(message);
+        logger.info(String(message));
     }
 
     warn(message: any) {
-        this.server.log.warn(message);
+        logger.warn(String(message));
     }
 
     error(message: any, fatal: boolean = false) {
-        this.server.log.error(message);
+        logger.error(String(message));
         if (fatal) {
             process.exit(1);
         }

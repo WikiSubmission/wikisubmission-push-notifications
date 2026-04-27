@@ -3,6 +3,7 @@ import { NotificationCategories, NotificationPayload, NotificationStatuses } fro
 import { supabaseInternalClient } from "../utils/supabase-client";
 import { IOSClient } from "../utils/ios-client";
 import { Database } from "../types/supabase-internal";
+import { logger } from "../utils/logger";
 
 type QueueRow = Database['internal']['Tables']['ws_push_notifications_queue']['Row'];
 type CategoryRow = Database['internal']['Tables']['ws_push_notifications_categories']['Row'];
@@ -40,6 +41,7 @@ export abstract class NotificationProtocol {
                 for (const i of queue) {
                     // [Mark missed if applicable]
                     if (options?.timeSensitive?.maximumMinutesBeforeMarkingAsMissed && new Date(i.scheduled_time).getTime() < new Date().getTime() - 1000 * 60 * options.timeSensitive.maximumMinutesBeforeMarkingAsMissed) {
+                        logger.warn(`[${this.props.category}] Marking ${i.id.slice(0, 8)}... as MISSED (queued ${new Date(i.scheduled_time).toISOString()})`);
                         await supabaseInternalClient()
                             .from("ws_push_notifications_queue")
                             .update({
@@ -68,7 +70,7 @@ export abstract class NotificationProtocol {
                                     JSON.parse(JSON.stringify(i.payload)) as z.infer<typeof NotificationPayload>
                                 );
                             } catch (error) {
-                                console.error(`[NotificationProtocol] Error sending notification for queue item ${i.id}`, error);
+                                logger.error(`[NotificationProtocol] Error sending notification for queue item ${i.id}`, error);
 
                                 // [Mark as failed]
                                 try {
@@ -80,7 +82,7 @@ export abstract class NotificationProtocol {
                                         })
                                         .eq("id", i.id);
                                 } catch (err) {
-                                    console.error(`[NotificationProtocol] Critical error marking notification as failed:`, err);
+                                    logger.error(`[NotificationProtocol] Critical error marking notification as failed:`, err);
                                 }
                             } finally {
                                 this.processingQueueIds.delete(i.id);
@@ -91,7 +93,7 @@ export abstract class NotificationProtocol {
                     }
                 }
             } catch (error) {
-                console.error(`[${this.props.category}] Error in processLiveQueue:`, error);
+                logger.error(`[${this.props.category}] Error in processLiveQueue`, error);
             }
         }
 
@@ -130,7 +132,7 @@ export abstract class NotificationProtocol {
                 })
                 .eq("id", queueId);
         } catch (error) {
-            console.error(`[NotificationProtocol] Error sending notification for queue item ${queueId}`, error);
+            logger.error(`[NotificationProtocol] Error sending notification for queue item ${queueId}`, error);
 
             // [Mark as failed]
             await supabaseInternalClient()
@@ -154,13 +156,13 @@ export abstract class NotificationProtocol {
                 .limit(50);
 
             if (error) {
-                console.error(`[${this.props.category}] Error getting queue:`, error);
+                logger.error(`[${this.props.category}] Error getting queue`, error);
                 return [];
             }
 
             return data || [];
         } catch (error) {
-            console.error(`[${this.props.category}] Critical error getting queue items:`, error);
+            logger.error(`[${this.props.category}] Critical error getting queue items`, error);
             return [];
         }
     }
@@ -174,7 +176,7 @@ export abstract class NotificationProtocol {
                 .order("created_at", { ascending: false });
 
             if (error) {
-                console.error(`[${this.props.category}] Error getting user queue:`, error);
+                logger.error(`[${this.props.category}] Error getting user queue`, error);
                 return [];
             }
 
@@ -182,7 +184,7 @@ export abstract class NotificationProtocol {
                 i => i.category.name === this.props.category
             ) || [];
         } catch (error) {
-            console.error(`[${this.props.category}] Critical error getting user queue items:`, error);
+            logger.error(`[${this.props.category}] Critical error getting user queue items`, error);
             return [];
         }
     }

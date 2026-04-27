@@ -2,6 +2,7 @@ import z from "zod";
 import { supabaseClient, supabaseInternalClient } from "../utils/supabase-client";
 import { NotificationProtocol } from "./notification-protocol";
 import { NotificationCategories, NotificationPayload, NotificationStatuses } from "./notification-types";
+import { logger } from "../utils/logger";
 
 export class DailyVerseNotification extends NotificationProtocol {
 
@@ -35,13 +36,13 @@ export class DailyVerseNotification extends NotificationProtocol {
                     .order("created_at", { ascending: false });
 
                 if (recipientsError) {
-                    console.error(`[${this.props.category}] Error fetching recipients:`, recipientsError);
+                    logger.error(`[${this.props.category}] Error fetching recipients`, recipientsError);
                     return;
                 }
 
                 if (!recipients) return;
 
-                console.log(`[${this.props.category}] === Daily Verse Queue ===`)
+                logger.info(`[${this.props.category}] === Daily Verse Queue — ${recipients.length} recipient(s) ===`)
 
                 // [Batch-fetch recent queue items for all recipients]
                 const allTokens = recipients.map(r => r.device_token);
@@ -57,7 +58,7 @@ export class DailyVerseNotification extends NotificationProtocol {
                     .order("created_at", { ascending: false });
 
                 if (batchError) {
-                    console.error(`[${this.props.category}] Error batch-fetching queue items:`, batchError);
+                    logger.error(`[${this.props.category}] Error batch-fetching queue items`, batchError);
                 }
 
                 const recentQueueByToken = new Map<string, NonNullable<typeof batchExisting>[0]>();
@@ -73,21 +74,21 @@ export class DailyVerseNotification extends NotificationProtocol {
 
                         if (existingItem) {
                             if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
-                                console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - already pending`);
+                                logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — already pending`);
                                 continue;
                             }
 
                             // [Skip if notification sent within last 48h]
                             const time = existingItem.delivered_at || existingItem.created_at;
                             if (new Date(time).getTime() > Date.now() - 1000 * 60 * 60 * 48) {
-                                console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - notification recently sent`);
+                                logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — recently sent`);
                                 continue;
                             }
                         }
 
                         const dailyVerse = await this.fetchDailyVerse();
                         if (!dailyVerse) {
-                            console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - no daily verse found`);
+                            logger.warn(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — no verse found`);
                             continue;
                         }
 
@@ -106,16 +107,16 @@ export class DailyVerseNotification extends NotificationProtocol {
                             });
 
                         if (insertError) {
-                            console.error(`[${this.props.category}] Error adding to queue for ${recipient.device_token}:`, insertError);
+                            logger.error(`[${this.props.category}] Failed to enqueue ${recipient.device_token.slice(0, 8)}...`, insertError);
                         }
 
                         await new Promise(resolve => setTimeout(resolve, 400));
                     } catch (err) {
-                        console.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token}:`, err);
+                        logger.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token.slice(0, 8)}...`, err);
                     }
                 }
             } catch (error) {
-                console.error(`[${this.props.category}] Error in updateLiveQueue:`, error);
+                logger.error(`[${this.props.category}] Error in updateLiveQueue`, error);
             }
         }
 
@@ -149,7 +150,7 @@ export class DailyVerseNotification extends NotificationProtocol {
                 .order("verse_number", { ascending: false });
 
             if (error) {
-                console.error(`[${this.props.category}] Error fetching daily verse:`, error);
+                logger.error(`[${this.props.category}] Error fetching daily verse`, error);
                 return null;
             }
 
@@ -164,7 +165,7 @@ export class DailyVerseNotification extends NotificationProtocol {
                 }
             }
         } catch (error) {
-            console.error(`[${this.props.category}] Critical error fetching daily verse:`, error);
+            logger.error(`[${this.props.category}] Critical error fetching daily verse`, error);
         }
 
         return null;

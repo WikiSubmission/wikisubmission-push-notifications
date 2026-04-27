@@ -4,6 +4,7 @@ import { NotificationCategories, NotificationStatuses } from "../../notification
 import { IOSClient } from "../../utils/ios-client";
 import { supabaseInternalClient } from "../../utils/supabase-client";
 import { getEnv } from "../../utils/get-env";
+import { logger } from "../../utils/logger";
 import { PrayerTimesNotification } from "../../notifications/prayer-times";
 import { DailyVerseNotification } from "../../notifications/daily-verse";
 import { DailyRemindersNotification } from "../../notifications/daily-reminders";
@@ -108,7 +109,7 @@ export default function route(): RouteOptions {
 
                         return reply.status(200).send({ success: true });
                     } catch (error) {
-                        console.error(error);
+                        logger.error(`[send-notification] Delivery failed for ${device_token.slice(0, 8)}... (${category})`, error);
                         return reply.status(400).send({ success: false });
                     }
                 }
@@ -145,7 +146,7 @@ export default function route(): RouteOptions {
 
                         return reply.status(200).send({ success: true });
                     } catch (error) {
-                        console.error(error);
+                        logger.error(`[send-notification] Delivery failed for ${device_token.slice(0, 8)}... (${category})`, error);
                         return reply.status(400).send({ success: false });
                     }
                 }
@@ -178,7 +179,7 @@ export default function route(): RouteOptions {
 
                         return reply.status(200).send({ success: true });
                     } catch (error) {
-                        console.error(error);
+                        logger.error(`[send-notification] Delivery failed for ${device_token.slice(0, 8)}... (${category})`, error);
                         return reply.status(400).send({ success: false });
                     }
                 }

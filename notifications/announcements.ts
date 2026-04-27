@@ -1,6 +1,7 @@
 import { NotificationProtocol } from "./notification-protocol";
 import { NotificationCategories, NotificationStatuses } from "./notification-types";
 import { supabaseInternalClient } from "../utils/supabase-client";
+import { logger } from "../utils/logger";
 
 // To send a new announcement: add an entry with a stable unique `id` (generate once, never change).
 // To stop sending: remove the entry (already-delivered users won't be re-notified).
@@ -49,7 +50,7 @@ export class AnnouncementsNotification extends NotificationProtocol {
                     .eq("announcements_registry.enabled", true);
 
                 if (recipientsError) {
-                    console.error(`[${this.props.category}] Error fetching recipients:`, recipientsError);
+                    logger.error(`[${this.props.category}] Error fetching recipients`, recipientsError);
                     return;
                 }
 
@@ -59,11 +60,11 @@ export class AnnouncementsNotification extends NotificationProtocol {
 
                 for (const announcement of ACTIVE_ANNOUNCEMENTS) {
                     if (new Date(announcement.expiresAt) < new Date()) {
-                        console.log(`[${this.props.category}] Skipping "${announcement.title}" — expired`);
+                        logger.info(`[${this.props.category}] Skipping "${announcement.title}" — expired`);
                         continue;
                     }
 
-                    console.log(`[${this.props.category}] === ${announcement.title} ===`);
+                    logger.info(`[${this.props.category}] === ${announcement.title} — ${recipients.length} recipient(s) ===`);
 
                     // Batch-fetch who has already received this specific announcement
                     const { data: existing, error: existingError } = await supabaseInternalClient()
@@ -75,7 +76,7 @@ export class AnnouncementsNotification extends NotificationProtocol {
                         .filter("payload->>announcement_id", "eq", announcement.id);
 
                     if (existingError) {
-                        console.error(`[${this.props.category}] Error checking existing queue items:`, existingError);
+                        logger.error(`[${this.props.category}] Error checking existing queue items`, existingError);
                         continue;
                     }
 
@@ -84,7 +85,7 @@ export class AnnouncementsNotification extends NotificationProtocol {
 
                     for (const recipient of targets) {
                         if (alreadyQueued.has(recipient.device_token)) {
-                            console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - already queued`);
+                            logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — already queued`);
                             continue;
                         }
 
@@ -107,16 +108,16 @@ export class AnnouncementsNotification extends NotificationProtocol {
                             });
 
                         if (insertError) {
-                            console.error(`[${this.props.category}] Error adding to queue for ${recipient.device_token.slice(0, 5)}...:`, insertError);
+                            logger.error(`[${this.props.category}] Failed to enqueue ${recipient.device_token.slice(0, 8)}...`, insertError);
                         } else {
-                            console.log(`[${this.props.category}] Queued for ${recipient.device_token.slice(0, 5)}...`);
+                            logger.info(`[${this.props.category}] Enqueued ${recipient.device_token.slice(0, 8)}... — "${announcement.title}"`);
                         }
 
                         await new Promise(resolve => setTimeout(resolve, 150));
                     }
                 }
             } catch (error) {
-                console.error(`[${this.props.category}] Error in updateLiveQueue:`, error);
+                logger.error(`[${this.props.category}] Error in updateLiveQueue`, error);
             }
         };
 

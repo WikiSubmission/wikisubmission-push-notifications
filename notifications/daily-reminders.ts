@@ -2,6 +2,7 @@ import z from "zod";
 import { supabaseInternalClient } from "../utils/supabase-client";
 import { NotificationProtocol } from "./notification-protocol";
 import { NotificationCategories, NotificationPayload, NotificationStatuses } from "./notification-types";
+import { logger } from "../utils/logger";
 
 type DailyReminder = {
     id: string;
@@ -138,7 +139,7 @@ export class DailyRemindersNotification extends NotificationProtocol {
                     .order("created_at", { ascending: false });
 
                 if (recipientsError) {
-                    console.error(`[${this.props.category}] Error fetching recipients:`, recipientsError);
+                    logger.error(`[${this.props.category}] Error fetching recipients`, recipientsError);
                     return;
                 }
 
@@ -148,7 +149,7 @@ export class DailyRemindersNotification extends NotificationProtocol {
                     isVersionAtLeast(recipient.version, MINIMUM_SUPPORTED_VERSION)
                 );
 
-                console.log(`[${this.props.category}] === Daily Reminders Queue ===`);
+                logger.info(`[${this.props.category}] === Daily Reminders Queue — ${eligibleRecipients.length} eligible recipient(s) ===`);
 
                 // [Batch-fetch recent queue items for all eligible recipients]
                 const allTokens = eligibleRecipients.map(r => r.device_token);
@@ -164,7 +165,7 @@ export class DailyRemindersNotification extends NotificationProtocol {
                     .order("created_at", { ascending: false });
 
                 if (batchError) {
-                    console.error(`[${this.props.category}] Error batch-fetching queue items:`, batchError);
+                    logger.error(`[${this.props.category}] Error batch-fetching queue items`, batchError);
                 }
 
                 const recentQueueByToken = new Map<string, NonNullable<typeof batchExisting>[0]>();
@@ -180,13 +181,13 @@ export class DailyRemindersNotification extends NotificationProtocol {
 
                         if (existingItem) {
                             if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
-                                console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - already pending`);
+                                logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — already pending`);
                                 continue;
                             }
 
                             const time = existingItem.delivered_at || existingItem.created_at;
                             if (new Date(time).getTime() > Date.now() - 1000 * 60 * 60 * 24) {
-                                console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - notification recently sent`);
+                                logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — recently sent`);
                                 continue;
                             }
                         }
@@ -209,16 +210,16 @@ export class DailyRemindersNotification extends NotificationProtocol {
                             });
 
                         if (insertError) {
-                            console.error(`[${this.props.category}] Error adding to queue for ${recipient.device_token}:`, insertError);
+                            logger.error(`[${this.props.category}] Failed to enqueue ${recipient.device_token.slice(0, 8)}...`, insertError);
                         }
 
                         await new Promise(resolve => setTimeout(resolve, 400));
                     } catch (err) {
-                        console.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token}:`, err);
+                        logger.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token.slice(0, 8)}...`, err);
                     }
                 }
             } catch (error) {
-                console.error(`[${this.props.category}] Error in updateLiveQueue:`, error);
+                logger.error(`[${this.props.category}] Error in updateLiveQueue`, error);
             }
         };
 
@@ -258,7 +259,7 @@ export class DailyRemindersNotification extends NotificationProtocol {
             .limit(50);
 
         if (error) {
-            console.error(`[${this.props.category}] Error fetching recent reminder history for ${deviceToken}:`, error);
+            logger.error(`[${this.props.category}] Error fetching recent reminder history for ${deviceToken.slice(0, 8)}...`, error);
             return new Set();
         }
 

@@ -1,6 +1,7 @@
 import { NotificationPayload } from "../notifications/notification-types";
 import { getEnv } from "./get-env";
 import { supabaseInternalClient } from "./supabase-client";
+import { logger } from "./logger";
 import http2 from "http2";
 import jwt from "jsonwebtoken";
 import z from "zod";
@@ -22,7 +23,7 @@ export class IOSClient {
             .single();
 
         if (error) {
-            console.error("[IOSClient] Error getting user", error);
+            logger.error(`[IOSClient] Error fetching user for ${input.deviceToken.slice(0, 8)}...`, error);
             return;
         }
 
@@ -33,11 +34,11 @@ export class IOSClient {
             await this.sendToEnvironment(input, env);
             return;
         } catch (error: any) {
-            console.error(`Failed to send via ${env}:`, error.message);
+            logger.warn(`[IOSClient] Send failed via ${env} for ${input.deviceToken.slice(0, 8)}...`, error.message);
 
             // Try alternate environment
             const alternateEnv: 'production' | 'sandbox' = env === 'production' ? 'sandbox' : 'production';
-            console.log(`Retrying with ${alternateEnv} APNS...`);
+            logger.info(`[IOSClient] Retrying ${input.deviceToken.slice(0, 8)}... via ${alternateEnv}`);
 
             try {
                 await this.sendToEnvironment(input, alternateEnv);
@@ -51,23 +52,23 @@ export class IOSClient {
 
                 return;
             } catch (alternateError: any) {
-                console.error(`APNS failed in both environments:`, alternateError.message);
+                logger.error(`[IOSClient] APNS failed in both environments for ${input.deviceToken.slice(0, 8)}...`, alternateError.message);
 
                 // Check if the error is due to an invalid device token
                 const shouldDeleteToken = this.shouldDeleteDeviceToken(error.message) ||
                     this.shouldDeleteDeviceToken(alternateError.message);
 
                 if (shouldDeleteToken) {
-                    console.log(`Invalid device token detected, removing from database...`);
+                    logger.warn(`[IOSClient] Invalid device token ${input.deviceToken.slice(0, 8)}..., removing from database`);
                     const { error: deleteError } = await supabaseInternalClient()
                         .from('ws_push_notifications_users')
                         .delete()
                         .eq('device_token', input.deviceToken);
 
                     if (deleteError) {
-                        console.error(`Error deleting device token:`, deleteError);
+                        logger.error(`[IOSClient] Failed to delete invalid device token ${input.deviceToken.slice(0, 8)}...`, deleteError);
                     } else {
-                        console.log(`✓ Deleted invalid device token from database`);
+                        logger.info(`[IOSClient] Removed invalid token ${input.deviceToken.slice(0, 8)}...`);
                     }
                 }
 
@@ -134,7 +135,7 @@ export class IOSClient {
                         if (!isResolved) {
                             isResolved = true;
                             clearTimeout(timeout);
-                            console.log(`[${input.category}] ✓ Delivery succeeded to ${input.deviceToken.slice(0, 5)}...`);
+                            logger.info(`[${input.category}] Delivered → ${input.deviceToken.slice(0, 8)}... (${env})`);
                             resolve(data ? JSON.parse(data) : {});
                         }
                     });
@@ -193,7 +194,7 @@ export class IOSClient {
         // JWT tokens expire after 1 hour, refresh if older than 50 minutes
         const fiftyMinutesInMs = 50 * 60 * 1000;
         if (!IOSClient.cachedToken || Date.now() - IOSClient.tokenCreatedAt > fiftyMinutesInMs) {
-            console.log('Refreshing expired APNS JWT token...');
+            logger.info('[IOSClient] Refreshing APNS JWT token');
             IOSClient.cachedToken = this.createApnsJwt();
             IOSClient.tokenCreatedAt = Date.now();
         }
@@ -209,7 +210,7 @@ export class IOSClient {
             const client = http2.connect(this.getBaseURL(env));
 
             client.on('error', (err) => {
-                console.error(`HTTP/2 connection error (${env}):`, err.message);
+                logger.error(`[IOSClient] HTTP/2 connection error (${env})`, err.message);
                 try { IOSClient.clients[env]?.close(); } catch { }
                 delete IOSClient.clients[env];
             });

@@ -3,6 +3,7 @@ import { Database } from "../types/supabase-internal";
 import { supabaseInternalClient } from "../utils/supabase-client";
 import { NotificationProtocol, QueueItem } from "./notification-protocol";
 import { NotificationCategories, NotificationPayload, NotificationStatuses } from "./notification-types";
+import { logger } from "../utils/logger";
 
 const PrayerTimesAPIResponseSchema = z.object({
     current_prayer: z.string(),
@@ -50,7 +51,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
                     .order("created_at", { ascending: false });
 
                 if (recipientsError) {
-                    console.error(`[${this.props.category}] Error fetching recipients:`, recipientsError);
+                    logger.error(`[${this.props.category}] Error fetching recipients`, recipientsError);
                     return;
                 }
 
@@ -90,7 +91,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
                         continue;
                     }
 
-                    console.log(`[${this.props.category}] === ${group.location} (${i}/${groups.size}) ===`);
+                    logger.info(`[${this.props.category}] === ${group.location} (${i}/${groups.size}) — ${group.users.length} recipient(s) ===`);
                     i++;
                     const prayerTimes = await this.fetchPrayerTimes(group.location, group.asrAdjustment);
                     if (!prayerTimes) continue;
@@ -99,7 +100,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
                     const minutesLeft = this.parseTimeLeft(prayerTimes.upcoming_prayer_time_left);
                     if (minutesLeft > 15) {
                         const pushMinutes = minutesLeft - 12;
-                        console.log(`[${this.props.category}] Skipping... - next prayer (${prayerTimes.upcoming_prayer}) too far away (${prayerTimes.upcoming_prayer_time_left})`);
+                        logger.info(`[${this.props.category}] ${group.location} — next prayer (${prayerTimes.upcoming_prayer}) in ${prayerTimes.upcoming_prayer_time_left}, skipping group`);
                         this.groupNextCheck.set(key, now + pushMinutes * 60 * 1000);
                         continue;
                     } else {
@@ -118,7 +119,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
                         .order("created_at", { ascending: false });
 
                     if (batchError) {
-                        console.error(`[${this.props.category}] Error batch-fetching queue items:`, batchError);
+                        logger.error(`[${this.props.category}] Error batch-fetching queue items`, batchError);
                     }
 
                     const recentQueueByToken = new Map<string, NonNullable<typeof batchExisting>[0]>();
@@ -134,14 +135,14 @@ export class PrayerTimesNotification extends NotificationProtocol {
 
                             if (existingItem) {
                                 if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
-                                    console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - already pending`);
+                                    logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — already pending`);
                                     continue;
                                 }
 
                                 // [Skip if notification sent within last 30m]
                                 const time = existingItem.delivered_at || existingItem.created_at;
                                 if (new Date(time).getTime() > Date.now() - 1000 * 60 * 30) {
-                                    console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - notification recently sent`);
+                                    logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — recently sent`);
                                     continue;
                                 }
                             }
@@ -156,7 +157,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
 
                             // [Skip if > 10 minutes left]
                             if (this.parseTimeLeft(prayerTimes.upcoming_prayer_time_left) > 10) {
-                                console.log(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 5)}... - prayer too far away (${prayerTimes.upcoming_prayer_time_left})`);
+                                logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — ${prayerTimes.upcoming_prayer_time_left} remaining`);
                                 continue;
                             }
 
@@ -180,19 +181,19 @@ export class PrayerTimesNotification extends NotificationProtocol {
                                 });
 
                             if (insertError) {
-                                console.error(`[${this.props.category}] Error adding to queue for ${recipient.device_token}:`, insertError);
+                                logger.error(`[${this.props.category}] Failed to enqueue ${recipient.device_token.slice(0, 8)}...`, insertError);
                             } else {
-                                console.log(`[${this.props.category}] Added ${recipient.device_token.slice(0, 5)}... to queue`);
+                                logger.info(`[${this.props.category}] Enqueued ${recipient.device_token.slice(0, 8)}... — ${prayerTimes.upcoming_prayer} in ${prayerTimes.upcoming_prayer_time_left}`);
                             }
 
                             await new Promise(resolve => setTimeout(resolve, 150));
                         } catch (err) {
-                            console.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token}:`, err);
+                            logger.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token.slice(0, 8)}...`, err);
                         }
                     }
                 }
             } catch (error) {
-                console.error(`[${this.props.category}] Error in updateLiveQueue:`, error);
+                logger.error(`[${this.props.category}] Error in updateLiveQueue`, error);
             }
         }
 
@@ -217,7 +218,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
             const response = await fetch(fetchURL.toString());
 
             if (!response.ok || response.status !== 200) {
-                console.error(`[${this.props.category}] Error fetching times for ${location}: ${response.statusText}`);
+                logger.error(`[${this.props.category}] Prayer times API error for ${location}`, `HTTP ${response.status} ${response.statusText}`);
                 return;
             }
 
@@ -226,7 +227,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
 
             return prayerTimes;
         } catch (error) {
-            console.error(`[${this.props.category}] Critical error fetching prayer times for ${location}:`, error);
+            logger.error(`[${this.props.category}] Critical error fetching prayer times for ${location}`, error);
             return;
         }
     }
