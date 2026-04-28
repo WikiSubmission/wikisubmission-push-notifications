@@ -175,19 +175,23 @@ export class DailyRemindersNotification extends NotificationProtocol {
                     }
                 }
 
+                let skippedPending = 0;
+                let skippedRecentlySent = 0;
+                let enqueued = 0;
+
                 for (const recipient of eligibleRecipients) {
                     try {
                         const existingItem = recentQueueByToken.get(recipient.device_token);
 
                         if (existingItem) {
                             if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
-                                logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — already pending`);
+                                skippedPending++;
                                 continue;
                             }
 
                             const time = existingItem.delivered_at || existingItem.created_at;
                             if (new Date(time).getTime() > Date.now() - 1000 * 60 * 60 * 24) {
-                                logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — recently sent`);
+                                skippedRecentlySent++;
                                 continue;
                             }
                         }
@@ -211,6 +215,8 @@ export class DailyRemindersNotification extends NotificationProtocol {
 
                         if (insertError) {
                             logger.error(`[${this.props.category}] Failed to enqueue ${recipient.device_token.slice(0, 8)}...`, insertError);
+                        } else {
+                            enqueued++;
                         }
 
                         await new Promise(resolve => setTimeout(resolve, 400));
@@ -218,6 +224,12 @@ export class DailyRemindersNotification extends NotificationProtocol {
                         logger.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token.slice(0, 8)}...`, err);
                     }
                 }
+
+                const parts: string[] = [];
+                if (enqueued > 0) parts.push(`${enqueued} enqueued`);
+                if (skippedPending > 0) parts.push(`${skippedPending} pending`);
+                if (skippedRecentlySent > 0) parts.push(`${skippedRecentlySent} recently sent`);
+                logger.info(`[${this.props.category}] ${parts.length > 0 ? parts.join(', ') : 'nothing to do'}`);
             } catch (error) {
                 logger.error(`[${this.props.category}] Error in updateLiveQueue`, error);
             }

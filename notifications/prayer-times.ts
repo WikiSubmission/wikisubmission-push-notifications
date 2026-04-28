@@ -129,35 +129,41 @@ export class PrayerTimesNotification extends NotificationProtocol {
                         }
                     }
 
+                    let skippedPending = 0;
+                    let skippedRecentlySent = 0;
+                    let skippedPrayerDisabled = 0;
+                    let skippedTimeRemaining = 0;
+                    let enqueued = 0;
+
                     for (const recipient of group.users) {
                         try {
                             const existingItem = recentQueueByToken.get(recipient.device_token);
 
                             if (existingItem) {
                                 if (existingItem.status === NotificationStatuses.enum.DELIVERY_PENDING) {
-                                    logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — already pending`);
+                                    skippedPending++;
                                     continue;
                                 }
 
                                 // [Skip if notification sent within last 30m]
                                 const time = existingItem.delivered_at || existingItem.created_at;
                                 if (new Date(time).getTime() > Date.now() - 1000 * 60 * 30) {
-                                    logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — recently sent`);
+                                    skippedRecentlySent++;
                                     continue;
                                 }
                             }
 
                             // [Skip if prayer is disabled by user]
-                            if (prayerTimes.current_prayer === "fajr" && !recipient.prayer_times_registry.dawn) continue;
-                            if (prayerTimes.current_prayer === "sunrise" && !recipient.prayer_times_registry.sunrise) continue;
-                            if (prayerTimes.current_prayer === "dhuhr" && !recipient.prayer_times_registry.noon) continue;
-                            if (prayerTimes.current_prayer === "asr" && !recipient.prayer_times_registry.afternoon) continue;
-                            if (prayerTimes.current_prayer === "maghrib" && !recipient.prayer_times_registry.sunset) continue;
-                            if (prayerTimes.current_prayer === "isha" && !recipient.prayer_times_registry.night) continue;
+                            if (prayerTimes.current_prayer === "fajr" && !recipient.prayer_times_registry.dawn) { skippedPrayerDisabled++; continue; }
+                            if (prayerTimes.current_prayer === "sunrise" && !recipient.prayer_times_registry.sunrise) { skippedPrayerDisabled++; continue; }
+                            if (prayerTimes.current_prayer === "dhuhr" && !recipient.prayer_times_registry.noon) { skippedPrayerDisabled++; continue; }
+                            if (prayerTimes.current_prayer === "asr" && !recipient.prayer_times_registry.afternoon) { skippedPrayerDisabled++; continue; }
+                            if (prayerTimes.current_prayer === "maghrib" && !recipient.prayer_times_registry.sunset) { skippedPrayerDisabled++; continue; }
+                            if (prayerTimes.current_prayer === "isha" && !recipient.prayer_times_registry.night) { skippedPrayerDisabled++; continue; }
 
                             // [Skip if > 10 minutes left]
                             if (this.parseTimeLeft(prayerTimes.upcoming_prayer_time_left) > 10) {
-                                logger.info(`[${this.props.category}] Skipping ${recipient.device_token.slice(0, 8)}... — ${prayerTimes.upcoming_prayer_time_left} remaining`);
+                                skippedTimeRemaining++;
                                 continue;
                             }
 
@@ -183,6 +189,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
                             if (insertError) {
                                 logger.error(`[${this.props.category}] Failed to enqueue ${recipient.device_token.slice(0, 8)}...`, insertError);
                             } else {
+                                enqueued++;
                                 logger.info(`[${this.props.category}] Enqueued ${recipient.device_token.slice(0, 8)}... — ${prayerTimes.upcoming_prayer} in ${prayerTimes.upcoming_prayer_time_left}`);
                             }
 
@@ -190,6 +197,15 @@ export class PrayerTimesNotification extends NotificationProtocol {
                         } catch (err) {
                             logger.error(`[${this.props.category}] Unexpected error processing recipient ${recipient.device_token.slice(0, 8)}...`, err);
                         }
+                    }
+
+                    const parts: string[] = [];
+                    if (skippedPending > 0) parts.push(`${skippedPending} pending`);
+                    if (skippedRecentlySent > 0) parts.push(`${skippedRecentlySent} recently sent`);
+                    if (skippedPrayerDisabled > 0) parts.push(`${skippedPrayerDisabled} prayer disabled`);
+                    if (skippedTimeRemaining > 0) parts.push(`${skippedTimeRemaining} time remaining`);
+                    if (enqueued === 0 && parts.length > 0) {
+                        logger.info(`[${this.props.category}] ${group.location} — skipped: ${parts.join(', ')}`);
                     }
                 }
             } catch (error) {
