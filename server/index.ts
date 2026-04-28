@@ -17,6 +17,7 @@ export class Server {
         this.server = Fastify({
             logger: {
                 enabled: true,
+                level: "warn",
                 transport: {
                     targets: [
                         // [Pino Pretty - Pretty logs]

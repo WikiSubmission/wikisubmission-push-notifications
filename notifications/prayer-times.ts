@@ -91,7 +91,6 @@ export class PrayerTimesNotification extends NotificationProtocol {
                         continue;
                     }
 
-                    logger.info(`[${this.props.category}] === ${group.location} (${i}/${groups.size}) — ${group.users.length} recipient(s) ===`);
                     i++;
                     const prayerTimes = await this.fetchPrayerTimes(group.location, group.asrAdjustment);
                     if (!prayerTimes) continue;
@@ -100,11 +99,12 @@ export class PrayerTimesNotification extends NotificationProtocol {
                     const minutesLeft = this.parseTimeLeft(prayerTimes.upcoming_prayer_time_left);
                     if (minutesLeft > 15) {
                         const pushMinutes = minutesLeft - 12;
-                        logger.info(`[${this.props.category}] ${group.location} — next prayer (${prayerTimes.upcoming_prayer}) in ${prayerTimes.upcoming_prayer_time_left}, skipping group`);
+                        logger.info(`[${this.props.category}] ${group.location} (${i - 1}/${groups.size}) — next prayer (${prayerTimes.upcoming_prayer}) in ${prayerTimes.upcoming_prayer_time_left}, deferring`);
                         this.groupNextCheck.set(key, now + pushMinutes * 60 * 1000);
                         continue;
                     } else {
                         this.groupNextCheck.delete(key);
+                        logger.info(`[${this.props.category}] === ${group.location} (${i - 1}/${groups.size}) — ${group.users.length} recipient(s) ===`);
                     }
 
                     // [Batch-fetch recent queue items for all users in this group]
@@ -205,7 +205,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
                     if (skippedPrayerDisabled > 0) parts.push(`${skippedPrayerDisabled} prayer disabled`);
                     if (skippedTimeRemaining > 0) parts.push(`${skippedTimeRemaining} time remaining`);
                     if (enqueued === 0 && parts.length > 0) {
-                        logger.info(`[${this.props.category}] ${group.location} — skipped: ${parts.join(', ')}`);
+                        logger.info(`[${this.props.category}] skipped: ${parts.join(', ')}`);
                     }
                 }
             } catch (error) {
