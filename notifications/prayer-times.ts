@@ -253,10 +253,12 @@ export class PrayerTimesNotification extends NotificationProtocol {
             ? sound
             : undefined;
 
+        // [Titles avoid a frozen "Xm till" countdown, which goes stale between enqueue
+        //  and delivery. The absolute start time in the body stays accurate regardless of delay.]
         if (prayerTimes.upcoming_prayer === 'sunrise') {
             return {
                 deviceToken,
-                title: `${prayerTimes.times_left.sunrise} till sunrise`,
+                title: `Sunrise coming up`,
                 body: `Fajr ends at ${prayerTimes.times.sunrise}`,
                 category: NotificationCategories.enum.PRAYER_TIMES,
                 deepLink: `wikisubmission://prayer-times`,
@@ -267,7 +269,7 @@ export class PrayerTimesNotification extends NotificationProtocol {
         } else {
             return {
                 deviceToken,
-                title: `${isFriday(prayerTimes) && prayerTimes.upcoming_prayer === 'dhuhr' ? 'Happy Friday! ' : ''}${prayerTimes.upcoming_prayer_time_left} till ${englishNameForPrayer(prayerTimes.upcoming_prayer)} prayer`,
+                title: `${isFriday(prayerTimes) && prayerTimes.upcoming_prayer === 'dhuhr' ? 'Happy Friday! ' : ''}${capitalized(englishNameForPrayer(prayerTimes.upcoming_prayer))} prayer coming up`,
                 body: `${capitalized(prayerTimes.upcoming_prayer)} starts at ${prayerTimes.times[prayerTimes.upcoming_prayer]}`,
                 category: NotificationCategories.enum.PRAYER_TIMES,
                 deepLink: `wikisubmission://prayer-times`,
