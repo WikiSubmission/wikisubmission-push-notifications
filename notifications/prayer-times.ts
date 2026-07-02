@@ -176,21 +176,16 @@ export class PrayerTimesNotification extends NotificationProtocol {
 
                             // [Enqueue the notification with the payload]
                             // [The queue is separately processed and should trigger within a minute]
-                            const { error: insertError } = await supabaseInternalClient()
-                                .from("ws_push_notifications_queue")
-                                .insert({
-                                    scheduled_time: new Date().toISOString(),
-                                    device_token: recipient.device_token,
-                                    status: NotificationStatuses.enum.DELIVERY_PENDING,
-                                    category: NotificationCategories.enum.PRAYER_TIMES,
-                                    payload: payload as any
-                                });
+                            const result = await this.enqueue({
+                                device_token: recipient.device_token,
+                                payload
+                            });
 
-                            if (insertError) {
-                                logger.error(`[${this.props.category}] Failed to enqueue ${recipient.device_token.slice(0, 8)}...`, insertError);
-                            } else {
+                            if (result === 'inserted') {
                                 enqueued++;
                                 logger.info(`[${this.props.category}] Enqueued ${recipient.device_token.slice(0, 8)}... — ${prayerTimes.upcoming_prayer} in ${prayerTimes.upcoming_prayer_time_left}`);
+                            } else if (result === 'duplicate') {
+                                skippedPending++;
                             }
 
                             await new Promise(resolve => setTimeout(resolve, 150));

@@ -105,6 +105,43 @@ export abstract class NotificationProtocol {
         await run();
     }
 
+    /**
+     * Inserts a pending queue item, tolerating concurrent enqueue passes.
+     *
+     * The per-category dedup (skip if already pending / recently sent) is a non-atomic
+     * read-then-insert, so two overlapping runs (e.g. two server instances briefly alive
+     * during a reload) can both decide to enqueue the same recipient. A partial unique
+     * index on the queue (device_token, category) WHERE status = 'DELIVERY_PENDING' AND
+     * api_triggered = false turns the losing insert into a unique violation (23505), which
+     * we treat as a benign duplicate rather than an error or a second delivery.
+     */
+    protected async enqueue(item: {
+        device_token: string;
+        payload: z.infer<typeof NotificationPayload>;
+        scheduled_time?: string;
+    }): Promise<'inserted' | 'duplicate' | 'error'> {
+        const { error } = await supabaseInternalClient()
+            .from("ws_push_notifications_queue")
+            .insert({
+                scheduled_time: item.scheduled_time ?? new Date().toISOString(),
+                device_token: item.device_token,
+                status: NotificationStatuses.enum.DELIVERY_PENDING,
+                category: this.props.category,
+                payload: item.payload as any
+            });
+
+        if (error) {
+            // 23505 = unique_violation: another concurrent pass already enqueued this recipient.
+            if ((error as { code?: string }).code === '23505') {
+                return 'duplicate';
+            }
+            logger.error(`[${this.props.category}] Failed to enqueue ${item.device_token.slice(0, 8)}...`, error);
+            return 'error';
+        }
+
+        return 'inserted';
+    }
+
     async sendNotification(queueId: string, payload: z.infer<typeof NotificationPayload>) {
         if (!payload) {
             await supabaseInternalClient()

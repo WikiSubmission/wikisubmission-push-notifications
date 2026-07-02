@@ -203,20 +203,15 @@ export class DailyRemindersNotification extends NotificationProtocol {
                             reminder
                         );
 
-                        const { error: insertError } = await supabaseInternalClient()
-                            .from("ws_push_notifications_queue")
-                            .insert({
-                                scheduled_time: new Date().toISOString(),
-                                device_token: recipient.device_token,
-                                status: NotificationStatuses.enum.DELIVERY_PENDING,
-                                category: NotificationCategories.enum.DAILY_REMINDERS,
-                                payload: payload as any
-                            });
+                        const result = await this.enqueue({
+                            device_token: recipient.device_token,
+                            payload
+                        });
 
-                        if (insertError) {
-                            logger.error(`[${this.props.category}] Failed to enqueue ${recipient.device_token.slice(0, 8)}...`, insertError);
-                        } else {
+                        if (result === 'inserted') {
                             enqueued++;
+                        } else if (result === 'duplicate') {
+                            skippedPending++;
                         }
 
                         await new Promise(resolve => setTimeout(resolve, 400));
