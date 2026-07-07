@@ -143,6 +143,31 @@ export abstract class NotificationProtocol {
     }
 
     async sendNotification(queueId: string, payload: z.infer<typeof NotificationPayload>) {
+        // [Atomically claim the row before sending.]
+        // Multiple instances (or overlapping runs) can each fetch the same PENDING row and
+        // deliver it, producing duplicate pushes for a single queue item. This status-guarded
+        // update is atomic: only the instance that transitions the row out of PENDING proceeds
+        // to send. Any other instance gets zero rows back and skips.
+        const { data: claimed, error: claimError } = await supabaseInternalClient()
+            .from("ws_push_notifications_queue")
+            .update({
+                updated_at: new Date().toISOString(),
+                status: NotificationStatuses.enum.DELIVERY_SUCCEEDED,
+            })
+            .eq("id", queueId)
+            .eq("status", NotificationStatuses.enum.DELIVERY_PENDING)
+            .select("id");
+
+        if (claimError) {
+            logger.error(`[NotificationProtocol] Error claiming queue item ${queueId}`, claimError);
+            return;
+        }
+
+        if (!claimed || claimed.length === 0) {
+            // Another instance already claimed and is delivering (or delivered) this row.
+            return;
+        }
+
         if (!payload) {
             await supabaseInternalClient()
                 .from("ws_push_notifications_queue")
@@ -158,7 +183,7 @@ export abstract class NotificationProtocol {
         try {
             await new IOSClient().send(payload);
 
-            // [Mark as delivered]
+            // [Record delivery details; the row was already marked succeeded at claim time]
             await supabaseInternalClient()
                 .from("ws_push_notifications_queue")
                 .update({
